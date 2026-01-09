@@ -1,5 +1,6 @@
 import {User} from '../models/user.model.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const registerUser = async (req, res) => {
     try {
@@ -12,7 +13,7 @@ const registerUser = async (req, res) => {
         if (!emailRegex.test(email)) {
             return res.status(400).json({ message: 'Invalid email address.' });
         }
-        if (password.length < 6 || password.length > 60) {
+        if (password.length < 6 || password.length > 40) {
             return res.status(400).json({ message: 'Password must be 6-40 characters.' });
         }
         const normalizedEmail = email.trim().toLowerCase();
@@ -50,7 +51,17 @@ const loginUser = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(400).json({ message: 'Invalid email or password.' });
         }
-        // Successful login
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            return res.status(500).json({ message: 'Server misconfigured.' });
+        }
+        const token = jwt.sign({ sub: user._id }, jwtSecret, { expiresIn: '7d' });
+        res.cookie('token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
         res.status(200).json({ message: 'Login successful.' });
         
     } catch (error) {
@@ -66,7 +77,11 @@ const logoutUser = async (req, res) => {
         if (!email) {
             return res.status(400).json({ message: 'Email is required.' });
         }
-        // Here you would typically handle session invalidation or token revocation
+        res.clearCookie('token', {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production'
+        });
         res.status(200).json({ message: 'Logout successful.' });
         
     } catch (error) {
@@ -74,6 +89,33 @@ const logoutUser = async (req, res) => {
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 };
+const updateUserProfile = async (req, res) => {
+    // Profile update logic
+    try {
+        const { newUsername, newEmail } = req.body;
+        // Validate input
+        if (!newUsername && !newEmail) {
+            return res.status(400).json({ message: 'At least one field (username or email) is required to update.' });
+        }
+        // Update logic here
+        const user = await User.findByIdAndUpdate(req.user._id, { username: newUsername, email: newEmail }, { new: true });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        user.username = newUsername || user.username;
+        user.email = newEmail || user.email;
+        await user.save();
+        res.status(200).json({ message: 'Profile updated successfully.' });
+
+
+
+
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: 'Server error. Please try again later.' });
+    }
+};
 export { registerUser };
 export { loginUser };
 export { logoutUser };
+export { updateUserProfile };
