@@ -1,25 +1,31 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const Register = () => {
-    const { register } = useAuth();
-    const navigate = useNavigate();
+const UpdateProfile = () => {
+    const { user, updateProfile } = useAuth();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        if (user) {
+            setUsername(user.username || "");
+            setEmail(user.email || "");
+        }
+    }, [user]);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
+        setMessage("");
         setError("");
         setLoading(true);
         try {
-            await register(username, email, password);
-            navigate("/login");
+            await updateProfile(username, email);
+            setMessage("Profile updated.");
         } catch (err) {
-            setError(err.message || "Registration failed.");
+            setError(err.message || "Update failed.");
         } finally {
             setLoading(false);
         }
@@ -27,7 +33,7 @@ const Register = () => {
 
     return (
         <div>
-            <h1>Register</h1>
+            <h1>Update Profile</h1>
             <form onSubmit={handleSubmit}>
                 <label>
                     Username
@@ -35,7 +41,6 @@ const Register = () => {
                         type="text"
                         value={username}
                         onChange={(event) => setUsername(event.target.value)}
-                        required
                     />
                 </label>
                 <label>
@@ -44,28 +49,16 @@ const Register = () => {
                         type="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        required
                     />
                 </label>
-                <label>
-                    Password
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
-                    />
-                </label>
+                {message && <p>{message}</p>}
                 {error && <p>{error}</p>}
                 <button type="submit" disabled={loading}>
-                    {loading ? "Creating..." : "Register"}
+                    {loading ? "Saving..." : "Save"}
                 </button>
             </form>
-            <p>
-                Already registered? <Link to="/login">Login</Link>
-            </p>
         </div>
     );
 };
 
-export default Register;
+export default UpdateProfile;

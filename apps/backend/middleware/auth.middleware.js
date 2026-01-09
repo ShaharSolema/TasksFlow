@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 const authRequired = (req, res, next) => {
+    // Accept token from cookie or Authorization header (useful for tests).
     const authHeader = req.headers.authorization || '';
     const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
     const token = req.cookies?.token || bearerToken;

@@ -6,6 +6,7 @@ const createTask = async (req, res) => {
         if (!title || !title.trim()) {
             return res.status(400).json({ message: "Title is required." });
         }
+        // Link the task to the logged-in user.
         const task = new Task({
             title: title.trim(),
             description: description ? description.trim() : undefined,
@@ -23,6 +24,7 @@ const createTask = async (req, res) => {
 
 const listTasks = async (req, res) => {
     try {
+        // Only return tasks owned by this user.
         const tasks = await Task.find({ owner: req.user._id }).sort({ createdAt: -1 });
         return res.status(200).json(tasks);
     } catch (error) {

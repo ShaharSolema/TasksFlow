@@ -6,6 +6,7 @@ const registerUser = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        // Basic input checks to avoid empty values.
         if (!username || !email || !password) {
             return res.status(400).json({ message: 'All fields are required.' });
         }
@@ -18,7 +19,10 @@ const registerUser = async (req, res) => {
         }
         const normalizedEmail = email.trim().toLowerCase();
         const normalizedUsername = username.trim();
-        const existingUser = await User.findOne({ email: normalizedEmail });
+        // Make sure email or username is not already taken.
+        const existingUser = await User.findOne({
+            $or: [{ email: normalizedEmail }, { username: normalizedUsername.toLowerCase() }]
+        });
         if (existingUser) {
             return res.status(409).json({ message: 'User already in use.' });
         }
@@ -55,7 +59,8 @@ const loginUser = async (req, res) => {
         if (!jwtSecret) {
             return res.status(500).json({ message: 'Server misconfigured.' });
         }
-        const token = jwt.sign({ sub: user._id }, jwtSecret, { expiresIn: '7d' });
+        const token = jwt.sign({ sub: user._id, role: user.role || 'user' }, jwtSecret, { expiresIn: '7d' });
+        // Store JWT in an HttpOnly cookie so JS cannot read it.
         res.cookie('token', token, {
             httpOnly: true,
             sameSite: 'lax',
@@ -72,11 +77,6 @@ const loginUser = async (req, res) => {
 const logoutUser = async (req, res) => {
     // Logout logic here
     try {
-        const{ email }=req.body;
-        // Validate input
-        if (!email) {
-            return res.status(400).json({ message: 'Email is required.' });
-        }
         res.clearCookie('token', {
             httpOnly: true,
             sameSite: 'lax',
@@ -97,15 +97,37 @@ const updateUserProfile = async (req, res) => {
         if (!newUsername && !newEmail) {
             return res.status(400).json({ message: 'At least one field (username or email) is required to update.' });
         }
-        // Update logic here
-        const user = await User.findByIdAndUpdate(req.user._id, { username: newUsername, email: newEmail }, { new: true });
+        const updates = {};
+        if (newUsername) {
+            updates.username = newUsername.trim();
+        }
+        if (newEmail) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(newEmail)) {
+                return res.status(400).json({ message: 'Invalid email address.' });
+            }
+            updates.email = newEmail.trim().toLowerCase();
+        }
+        if (updates.email || updates.username) {
+            const existingUser = await User.findOne({
+                _id: { $ne: req.user._id },
+                $or: [
+                    updates.email ? { email: updates.email } : null,
+                    updates.username ? { username: updates.username.toLowerCase() } : null
+                ].filter(Boolean)
+            });
+            if (existingUser) {
+                return res.status(409).json({ message: 'User already in use.' });
+            }
+        }
+        const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true });
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        user.username = newUsername || user.username;
-        user.email = newEmail || user.email;
-        await user.save();
-        res.status(200).json({ message: 'Profile updated successfully.' });
+        res.status(200).json({
+            message: 'Profile updated successfully.',
+            user: { id: user._id, username: user.username, email: user.email, role: user.role }
+        });
 
 
 
@@ -115,7 +137,20 @@ const updateUserProfile = async (req, res) => {
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 };
+const getCurrentUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('username email role');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        return res.status(200).json({ user });
+    } catch (error) {
+        console.error('Error loading current user:', error);
+        return res.status(500).json({ message: 'Server error. Please try again later.' });
+    }
+};
 export { registerUser };
 export { loginUser };
 export { logoutUser };
 export { updateUserProfile };
+export { getCurrentUser };
