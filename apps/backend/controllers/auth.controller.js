@@ -12,8 +12,8 @@ const registerUser = async (req, res) => {
         if (!emailRegex.test(email)) {
             return res.status(400).json({ message: 'Invalid email address.' });
         }
-        if (password.length < 6) {
-            return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        if (password.length < 6 || password.length > 60) {
+            return res.status(400).json({ message: 'Password must be 6-40 characters.' });
         }
         const normalizedEmail = email.trim().toLowerCase();
         const normalizedUsername = username.trim();
@@ -34,4 +34,46 @@ const registerUser = async (req, res) => {
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 };
+const loginUser = async (req, res) => {
+    // Login logic here
+    try {
+        const { email, password } = req.body;
+        // Validate input
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required.' });
+        }
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid email or password.' });
+        }
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(400).json({ message: 'Invalid email or password.' });
+        }
+        // Successful login
+        res.status(200).json({ message: 'Login successful.' });
+        
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).json({ message: 'Server error. Please try again later.' });
+    }
+};
+const logoutUser = async (req, res) => {
+    // Logout logic here
+    try {
+        const{ email }=req.body;
+        // Validate input
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required.' });
+        }
+        // Here you would typically handle session invalidation or token revocation
+        res.status(200).json({ message: 'Logout successful.' });
+        
+    } catch (error) {
+        console.error('Error logging out user:', error);
+        res.status(500).json({ message: 'Server error. Please try again later.' });
+    }
+};
 export { registerUser };
+export { loginUser };
+export { logoutUser };

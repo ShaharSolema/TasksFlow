@@ -21,7 +21,7 @@ const userSchema=new Schema({
         type:String,
         required:true,
         minlength:6,
-        maxlength:40
+        maxlength:60
     }
 }, {
     timestamps:true
