@@ -143,6 +143,214 @@ a:hover {
   box-shadow: var(--shadow);
 }
 
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.hero h1 {
+  margin: 0;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #efe7db;
+  font-size: 14px;
+}
+
+.task-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.task-board {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.kanban-column {
+  background: #f7f1e8;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 320px;
+  min-width: 0;
+}
+
+.kanban-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.kanban-list {
+  display: grid;
+  gap: 12px;
+}
+
+.task-card {
+  display: grid;
+  gap: 8px;
+}
+
+.task-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.category-pill {
+  background: #e9dfcf;
+  border: 1px solid #e0d2bd;
+}
+
+.status-pill {
+  text-transform: capitalize;
+}
+
+.pill.done {
+  background: #dcecdf;
+}
+
+.pill.in-progress {
+  background: #f2e2c2;
+}
+
+.pill.todo {
+  background: #f5efe3;
+}
+
+.filter-row {
+  display: grid;
+  gap: 12px;
+}
+
+.task-count {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.calendar-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.calendar-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.calendar-cell {
+  min-height: 90px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  background: #faf6ef;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.calendar-cell.empty {
+  background: transparent;
+  border: none;
+}
+
+.calendar-date {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.event-tag {
+  background: #efe3cf;
+  border-radius: 999px;
+  padding: 2px 6px;
+  display: inline-block;
+}
+
+.event-tag.interview {
+  background: #f3d9c3;
+}
+
+.event-tag.follow-up {
+  background: #e7e0c9;
+}
+
+.event-tag.reminder {
+  background: #e1e8d5;
+}
+
+.event-tag.applied {
+  background: #e9dfcf;
+}
+
+.event-more {
+  color: var(--muted);
+}
+
+.calendar-list {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-group h3 {
+  margin: 0 0 6px;
+}
+
+.sticky {
+  position: sticky;
+  top: 90px;
+}
+
+@media (max-width: 900px) {
+  .task-grid {
+    grid-template-columns: 1fr;
+  }
+  .sticky {
+    position: static;
+  }
+  .kanban {
+    grid-template-columns: 1fr;
+  }
+  .calendar-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .stack {
   display: grid;
   gap: 14px;
@@ -289,6 +497,45 @@ a:hover {
   height: 100%;
   background: var(--accent);
   border-radius: 999px;
+}
+
+.chart-card {
+  padding-bottom: 8px;
+}
+
+.chart-shell {
+  height: 280px;
+  margin-top: 12px;
+}
+
+.chart-shell.small {
+  height: 220px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.table {
+  display: grid;
+  gap: 10px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 100px 140px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8f4ee;
+}
+
+.table-head {
+  font-weight: 600;
+  background: #efe7db;
 }
 
 .form-grid {

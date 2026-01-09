@@ -1,6 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+    CartesianGrid,
+    BarChart,
+    Bar,
+    PieChart,
+    Pie,
+    Cell
+} from "recharts";
 import { useAuth } from "../context/AuthContext.jsx";
 import { API_BASE } from "../lib/api.js";
+
+const STATUS_COLORS = {
+    "todo": "#d9c9a5",
+    "in-progress": "#d6b56d",
+    "done": "#7eb18b"
+};
 
 const Charts = () => {
     const { user } = useAuth();
@@ -31,6 +51,24 @@ const Charts = () => {
 
         loadAnalytics();
     }, [user]);
+
+    const tasksPerDay = useMemo(
+        () =>
+            (data?.tasksPerDay || []).map((item) => ({
+                date: item._id,
+                count: item.count
+            })),
+        [data]
+    );
+
+    const statusDistribution = useMemo(
+        () =>
+            (data?.statusDistribution || []).map((item) => ({
+                name: item._id,
+                value: item.count
+            })),
+        [data]
+    );
 
     if (!user || user.role !== "admin") {
         return (
@@ -64,42 +102,50 @@ const Charts = () => {
                             <span className="pill">Completion: {data.kpis.completionRate}%</span>
                         </div>
                     </div>
-                    <div className="card">
+                    <div className="card chart-card">
                         <h2>Tasks per day</h2>
-                        <div className="bar-chart">
-                            {(data.tasksPerDay || []).map((item) => (
-                                <div key={item._id} className="bar-row">
-                                    <span>{item._id}</span>
-                                    <div className="bar">
-                                        <div
-                                            className="bar-fill"
-                                            style={{ width: `${Math.min(item.count * 15, 100)}%` }}
-                                        />
-                                    </div>
-                                    <span>{item.count}</span>
-                                </div>
-                            ))}
+                        <div className="chart-shell">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={tasksPerDay}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e6dfd3" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                    <YAxis allowDecimals={false} />
+                                    <Tooltip />
+                                    <Line type="monotone" dataKey="count" stroke="#2f6f5a" strokeWidth={3} dot={false} />
+                                </LineChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                    <div className="card">
-                        <h2>Status distribution</h2>
-                        <div className="row">
-                            {(data.statusDistribution || []).map((item) => (
-                                <span key={item._id} className={`pill ${item._id}`}>
-                                    {item._id}: {item.count}
-                                </span>
-                            ))}
+                    <div className="card chart-grid">
+                        <div>
+                            <h2>Status distribution</h2>
+                            <div className="chart-shell small">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={statusDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                                            {statusDistribution.map((entry) => (
+                                                <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || "#c8b48c"} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                    </div>
-                    <div className="card">
-                        <h2>Top users</h2>
-                        <ul className="task-list">
-                            {(data.topUsers || []).map((item) => (
-                                <li key={item.userId}>
-                                    {item.username}: {item.count} tasks
-                                </li>
-                            ))}
-                        </ul>
+                        <div>
+                            <h2>Top users</h2>
+                            <div className="chart-shell small">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={data.topUsers || []}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e6dfd3" />
+                                        <XAxis dataKey="username" tick={{ fontSize: 12 }} />
+                                        <YAxis allowDecimals={false} />
+                                        <Tooltip />
+                                        <Bar dataKey="count" fill="#2f6f5a" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

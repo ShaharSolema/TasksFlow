@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRouter from '../routes/user.route.js';
 import taskRouter from '../routes/task.route.js';
 import adminRouter from '../routes/admin.route.js';
+import jobRouter from '../routes/job.route.js';
 const app = express();// Initialize Express app
 app.use(express.json());
 app.use(cookieParser());
@@ -15,6 +16,7 @@ app.use(cors({
 //routes
 app.use('/api/auth', authRouter);
 app.use('/api/tasks', taskRouter);
+app.use('/api/jobs', jobRouter);
 app.use('/api/admin', adminRouter);
 app.get('/', (req, res) => {
     res.json({ status: 'ok' });

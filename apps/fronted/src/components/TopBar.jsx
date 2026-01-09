@@ -25,6 +25,8 @@ const TopBar = () => {
                 </Link>
                 <nav className="nav-links">
                     <Link to="/tasks">Task Management</Link>
+                    <Link to="/jobs">Job Management</Link>
+                    <Link to="/jobs/calendar">Job Calendar</Link>
                     {user?.role === "admin" && <Link to="/charts">Charts</Link>}
                 </nav>
                 {!user ? (

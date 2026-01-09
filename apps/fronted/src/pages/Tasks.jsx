@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { API_BASE } from "../lib/api.js";
 
 const Tasks = () => {
@@ -194,172 +195,241 @@ const Tasks = () => {
         return statusMatch && categoryMatch && searchMatch;
     });
 
+    const groupedTasks = useMemo(() => {
+        const base = {
+            "todo": [],
+            "in-progress": [],
+            "done": []
+        };
+        for (const task of filteredTasks) {
+            if (base[task.status]) {
+                base[task.status].push(task);
+            }
+        }
+        return base;
+    }, [filteredTasks]);
+
+    const onDragEnd = async (result) => {
+        if (!result.destination) return;
+        const { destination, draggableId } = result;
+        const nextStatus = destination.droppableId;
+        const task = tasks.find((item) => item._id === draggableId);
+        if (!task || task.status === nextStatus) return;
+        try {
+            const response = await fetch(`${API_BASE}/api/tasks/${draggableId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ status: nextStatus })
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to update task.");
+            }
+            await loadTasks();
+        } catch (err) {
+            setError(err.message || "Failed to update task.");
+        }
+    };
+
     return (
         <div className="page">
-            <h1>Your Tasks</h1>
-            <form onSubmit={handleCreate} className="card">
-                <h2>Create a task</h2>
-                <div className="form-grid">
-                    <input
-                        type="text"
-                        placeholder="Task title"
-                        value={title}
-                        onChange={(event) => setTitle(event.target.value)}
-                        required
-                        className="input"
-                    />
-                    <textarea
-                        placeholder="Short description"
-                        value={description}
-                        onChange={(event) => setDescription(event.target.value)}
-                        rows={3}
-                        className="textarea"
-                    />
-                    <div className="row">
-                        <select value={status} onChange={(event) => setStatus(event.target.value)} className="select">
-                            <option value="todo">Todo</option>
-                            <option value="in-progress">In progress</option>
-                            <option value="done">Done</option>
-                        </select>
-                        <select value={category} onChange={(event) => setCategory(event.target.value)} className="select">
-                            <option value="work">Work</option>
-                            <option value="personal">Personal</option>
-                            <option value="study">Study</option>
-                            <option value="health">Health</option>
-                            <option value="other">Other</option>
-                        </select>
-                        <input
-                            type="date"
-                            value={dueDate}
-                            onChange={(event) => setDueDate(event.target.value)}
-                            className="input"
-                        />
-                        <button type="submit" className="button">Add</button>
+            <div className="hero">
+                <div>
+                    <h1>Your Tasks</h1>
+                    <p className="muted">Organize your day with clean focus.</p>
+                </div>
+                <span className="badge">{filteredTasks.length} tasks</span>
+            </div>
+            <div className="task-grid">
+                <div className="task-board">
+                    {error && <p className="error">{error}</p>}
+                    {loading ? (
+                        <p className="muted">Loading...</p>
+                    ) : (
+                        <DragDropContext onDragEnd={onDragEnd}>
+                            <div className="kanban">
+                                {["todo", "in-progress", "done"].map((statusKey) => (
+                                    <Droppable key={statusKey} droppableId={statusKey}>
+                                        {(provided) => (
+                                            <div className="kanban-column" ref={provided.innerRef} {...provided.droppableProps}>
+                                                <div className="kanban-header">
+                                                    <h3>{statusKey.replace("-", " ")}</h3>
+                                                    <span className="badge">{groupedTasks[statusKey].length}</span>
+                                                </div>
+                                                <div className="kanban-list">
+                                                    {groupedTasks[statusKey].map((task, index) => (
+                                                        <Draggable key={task._id} draggableId={task._id} index={index}>
+                                                            {(dragProvided) => (
+                                                                <div
+                                                                    className="card task-card"
+                                                                    ref={dragProvided.innerRef}
+                                                                    {...dragProvided.draggableProps}
+                                                                    {...dragProvided.dragHandleProps}
+                                                                >
+                                                                    {editingId === task._id ? (
+                                                                        <form onSubmit={handleUpdate}>
+                                                                            <div className="form-grid">
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={editTitle}
+                                                                                    onChange={(event) => setEditTitle(event.target.value)}
+                                                                                    required
+                                                                                    className="input"
+                                                                                />
+                                                                                <textarea
+                                                                                    value={editDescription}
+                                                                                    onChange={(event) => setEditDescription(event.target.value)}
+                                                                                    rows={3}
+                                                                                    className="textarea"
+                                                                                />
+                                                                                <div className="row">
+                                                                                    <select
+                                                                                        value={editStatus}
+                                                                                        onChange={(event) => setEditStatus(event.target.value)}
+                                                                                        className="select"
+                                                                                    >
+                                                                                        <option value="todo">Todo</option>
+                                                                                        <option value="in-progress">In progress</option>
+                                                                                        <option value="done">Done</option>
+                                                                                    </select>
+                                                                                    <select
+                                                                                        value={editCategory}
+                                                                                        onChange={(event) => setEditCategory(event.target.value)}
+                                                                                        className="select"
+                                                                                    >
+                                                                                        <option value="work">Work</option>
+                                                                                        <option value="personal">Personal</option>
+                                                                                        <option value="study">Study</option>
+                                                                                        <option value="health">Health</option>
+                                                                                        <option value="other">Other</option>
+                                                                                    </select>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        value={editDueDate}
+                                                                                        onChange={(event) => setEditDueDate(event.target.value)}
+                                                                                        className="input"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="task-actions">
+                                                                                    <button type="submit" className="button">Save</button>
+                                                                                    <button type="button" className="button secondary" onClick={cancelEdit}>
+                                                                                        Cancel
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </form>
+                                                                    ) : (
+                                                                        <>
+                                                                            <div className="task-header">
+                                                                                <h4 className="task-title">{task.title}</h4>
+                                                                                <span className="pill category-pill">{task.category || "other"}</span>
+                                                                            </div>
+                                                                            {task.description && <p>{task.description}</p>}
+                                                                            <div className="task-meta">
+                                                                                <span>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "None"}</span>
+                                                                                <span>Time left: {formatTimeLeft(task.dueDate)}</span>
+                                                                            </div>
+                                                                            <div className="task-actions">
+                                                                                <button type="button" className="button secondary" onClick={() => startEdit(task)}>
+                                                                                    Edit
+                                                                                </button>
+                                                                                <button type="button" className="button danger" onClick={() => handleDelete(task._id)}>
+                                                                                    Delete
+                                                                                </button>
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </Draggable>
+                                                    ))}
+                                                    {provided.placeholder}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                ))}
+                            </div>
+                        </DragDropContext>
+                    )}
+                </div>
+                <div className="task-board">
+                    <form onSubmit={handleCreate} className="card sticky">
+                        <h2>Create a task</h2>
+                        <div className="form-grid">
+                            <input
+                                type="text"
+                                placeholder="Task title"
+                                value={title}
+                                onChange={(event) => setTitle(event.target.value)}
+                                required
+                                className="input"
+                            />
+                            <textarea
+                                placeholder="Short description"
+                                value={description}
+                                onChange={(event) => setDescription(event.target.value)}
+                                rows={3}
+                                className="textarea"
+                            />
+                            <select value={status} onChange={(event) => setStatus(event.target.value)} className="select">
+                                <option value="todo">Todo</option>
+                                <option value="in-progress">In progress</option>
+                                <option value="done">Done</option>
+                            </select>
+                            <select value={category} onChange={(event) => setCategory(event.target.value)} className="select">
+                                <option value="work">Work</option>
+                                <option value="personal">Personal</option>
+                                <option value="study">Study</option>
+                                <option value="health">Health</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={(event) => setDueDate(event.target.value)}
+                                className="input"
+                            />
+                            <button type="submit" className="button">Add task</button>
+                        </div>
+                    </form>
+                    <div className="card sticky">
+                        <h2>Filters</h2>
+                        <div className="filter-row">
+                            <select
+                                value={statusFilter}
+                                onChange={(event) => setStatusFilter(event.target.value)}
+                                className="select"
+                            >
+                                <option value="all">All status</option>
+                                <option value="todo">Todo</option>
+                                <option value="in-progress">In progress</option>
+                                <option value="done">Done</option>
+                            </select>
+                            <select
+                                value={categoryFilter}
+                                onChange={(event) => setCategoryFilter(event.target.value)}
+                                className="select"
+                            >
+                                <option value="all">All categories</option>
+                                <option value="work">Work</option>
+                                <option value="personal">Personal</option>
+                                <option value="study">Study</option>
+                                <option value="health">Health</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <input
+                                type="search"
+                                placeholder="Search tasks"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                className="input"
+                            />
+                        </div>
                     </div>
                 </div>
-            </form>
-            <div className="card">
-                <h2>Filters</h2>
-                <div className="row">
-                    <select
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                        className="select"
-                    >
-                        <option value="all">All status</option>
-                        <option value="todo">Todo</option>
-                        <option value="in-progress">In progress</option>
-                        <option value="done">Done</option>
-                    </select>
-                    <select
-                        value={categoryFilter}
-                        onChange={(event) => setCategoryFilter(event.target.value)}
-                        className="select"
-                    >
-                        <option value="all">All categories</option>
-                        <option value="work">Work</option>
-                        <option value="personal">Personal</option>
-                        <option value="study">Study</option>
-                        <option value="health">Health</option>
-                        <option value="other">Other</option>
-                    </select>
-                    <input
-                        type="search"
-                        placeholder="Search tasks"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        className="input"
-                    />
-                </div>
             </div>
-            {error && <p className="error">{error}</p>}
-            {loading ? (
-                <p className="muted">Loading...</p>
-            ) : (
-                <ul className="task-list">
-                    {filteredTasks.map((task) => (
-                        <li key={task._id}>
-                            <div className="card">
-                                {editingId === task._id ? (
-                                    <form onSubmit={handleUpdate}>
-                                        <div className="form-grid">
-                                            <input
-                                                type="text"
-                                                value={editTitle}
-                                                onChange={(event) => setEditTitle(event.target.value)}
-                                                required
-                                                className="input"
-                                            />
-                                            <textarea
-                                                value={editDescription}
-                                                onChange={(event) => setEditDescription(event.target.value)}
-                                                rows={3}
-                                                className="textarea"
-                                            />
-                                            <div className="row">
-                                                <select
-                                                    value={editStatus}
-                                                    onChange={(event) => setEditStatus(event.target.value)}
-                                                    className="select"
-                                                >
-                                                    <option value="todo">Todo</option>
-                                                    <option value="in-progress">In progress</option>
-                                                    <option value="done">Done</option>
-                                                </select>
-                                                <select
-                                                    value={editCategory}
-                                                    onChange={(event) => setEditCategory(event.target.value)}
-                                                    className="select"
-                                                >
-                                                    <option value="work">Work</option>
-                                                    <option value="personal">Personal</option>
-                                                    <option value="study">Study</option>
-                                                    <option value="health">Health</option>
-                                                    <option value="other">Other</option>
-                                                </select>
-                                                <input
-                                                    type="date"
-                                                    value={editDueDate}
-                                                    onChange={(event) => setEditDueDate(event.target.value)}
-                                                    className="input"
-                                                />
-                                                <button type="submit" className="button">Save</button>
-                                                <button type="button" className="button secondary" onClick={cancelEdit}>
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <>
-                                        <div className="task-header">
-                                            <h3 className="task-title">{task.title}</h3>
-                                            <span className={`pill ${task.status}`}>{task.status}</span>
-                                            <span className="pill">{task.category || "other"}</span>
-                                        </div>
-                                        {task.description && <p>{task.description}</p>}
-                                        <div className="task-meta">
-                                            <span>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "None"}</span>
-                                            <span>Time left: {formatTimeLeft(task.dueDate)}</span>
-                                        </div>
-                                        <div className="row">
-                                            <button type="button" className="button secondary" onClick={() => cycleStatus(task)}>
-                                                Next status
-                                            </button>
-                                            <button type="button" className="button secondary" onClick={() => startEdit(task)}>
-                                                Edit
-                                            </button>
-                                            <button type="button" className="button danger" onClick={() => handleDelete(task._id)}>
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
         </div>
     );
 };

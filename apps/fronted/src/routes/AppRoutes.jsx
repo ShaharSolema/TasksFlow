@@ -7,6 +7,8 @@ import ProtectedRoute from "../components/ProtectedRoute.jsx";
 import TopBar from "../components/TopBar.jsx";
 import Charts from "../pages/Charts.jsx";
 import Admin from "../pages/Admin.jsx";
+import Jobs from "../pages/Jobs.jsx";
+import JobCalendar from "../pages/JobCalendar.jsx";
 
 const AppRoutes = () => (
     <BrowserRouter>
@@ -28,6 +30,22 @@ const AppRoutes = () => (
                 element={
                     <ProtectedRoute>
                         <Tasks />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/jobs"
+                element={
+                    <ProtectedRoute>
+                        <Jobs />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/jobs/calendar"
+                element={
+                    <ProtectedRoute>
+                        <JobCalendar />
                     </ProtectedRoute>
                 }
             />
