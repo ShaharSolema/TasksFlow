@@ -19,6 +19,11 @@ const taskSchema = new Schema(
             enum: ["todo", "in-progress", "done"],
             default: "todo"
         },
+        category: {
+            type: String,
+            enum: ["work", "personal", "study", "health", "other"],
+            default: "other"
+        },
         dueDate: {
             type: Date
         },

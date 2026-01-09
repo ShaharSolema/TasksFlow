@@ -25,7 +25,7 @@ const TopBar = () => {
                 </Link>
                 <nav className="nav-links">
                     <Link to="/tasks">Task Management</Link>
-                    <Link to="/charts">Charts</Link>
+                    {user?.role === "admin" && <Link to="/charts">Charts</Link>}
                 </nav>
                 {!user ? (
                     <Link to="/login" className="button icon-button">

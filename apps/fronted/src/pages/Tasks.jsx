@@ -6,6 +6,7 @@ const Tasks = () => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [status, setStatus] = useState("todo");
+    const [category, setCategory] = useState("other");
     const [dueDate, setDueDate] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -13,14 +14,18 @@ const Tasks = () => {
     const [editTitle, setEditTitle] = useState("");
     const [editDescription, setEditDescription] = useState("");
     const [editStatus, setEditStatus] = useState("todo");
+    const [editCategory, setEditCategory] = useState("other");
     const [editDueDate, setEditDueDate] = useState("");
     const [now, setNow] = useState(Date.now());
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [categoryFilter, setCategoryFilter] = useState("all");
+    const [search, setSearch] = useState("");
 
     const formatTimeLeft = (dateString) => {
         if (!dateString) return "No due date";
-        const now = new Date();
+        const current = new Date(now);
         const due = new Date(dateString);
-        const diffMs = due.getTime() - now.getTime();
+        const diffMs = due.getTime() - current.getTime();
         if (Number.isNaN(due.getTime())) return "Invalid date";
         if (diffMs <= 0) return "Overdue";
         const totalMinutes = Math.floor(diffMs / 60000);
@@ -76,6 +81,7 @@ const Tasks = () => {
                     title,
                     description: description.trim() || undefined,
                     status,
+                    category,
                     dueDate: dueDate || undefined
                 })
             });
@@ -86,6 +92,7 @@ const Tasks = () => {
             setTitle("");
             setDescription("");
             setStatus("todo");
+            setCategory("other");
             setDueDate("");
             await loadTasks();
         } catch (err) {
@@ -98,6 +105,7 @@ const Tasks = () => {
         setEditTitle(task.title || "");
         setEditDescription(task.description || "");
         setEditStatus(task.status || "todo");
+        setEditCategory(task.category || "other");
         setEditDueDate(task.dueDate ? task.dueDate.slice(0, 10) : "");
     };
 
@@ -106,6 +114,7 @@ const Tasks = () => {
         setEditTitle("");
         setEditDescription("");
         setEditStatus("todo");
+        setEditCategory("other");
         setEditDueDate("");
     };
 
@@ -122,6 +131,7 @@ const Tasks = () => {
                     title: editTitle,
                     description: editDescription.trim() || "",
                     status: editStatus,
+                    category: editCategory,
                     dueDate: editDueDate || null
                 })
             });
@@ -153,6 +163,37 @@ const Tasks = () => {
         }
     };
 
+    const cycleStatus = async (task) => {
+        const order = ["todo", "in-progress", "done"];
+        const currentIndex = order.indexOf(task.status);
+        const nextStatus = order[(currentIndex + 1) % order.length];
+        try {
+            const response = await fetch(`${API_BASE}/api/tasks/${task._id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ status: nextStatus })
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to update task.");
+            }
+            await loadTasks();
+        } catch (err) {
+            setError(err.message || "Failed to update task.");
+        }
+    };
+
+    const filteredTasks = tasks.filter((task) => {
+        const statusMatch = statusFilter === "all" || task.status === statusFilter;
+        const categoryMatch = categoryFilter === "all" || task.category === categoryFilter;
+        const searchMatch =
+            !search ||
+            task.title.toLowerCase().includes(search.toLowerCase()) ||
+            (task.description || "").toLowerCase().includes(search.toLowerCase());
+        return statusMatch && categoryMatch && searchMatch;
+    });
+
     return (
         <div className="page">
             <h1>Your Tasks</h1>
@@ -180,6 +221,13 @@ const Tasks = () => {
                             <option value="in-progress">In progress</option>
                             <option value="done">Done</option>
                         </select>
+                        <select value={category} onChange={(event) => setCategory(event.target.value)} className="select">
+                            <option value="work">Work</option>
+                            <option value="personal">Personal</option>
+                            <option value="study">Study</option>
+                            <option value="health">Health</option>
+                            <option value="other">Other</option>
+                        </select>
                         <input
                             type="date"
                             value={dueDate}
@@ -190,12 +238,46 @@ const Tasks = () => {
                     </div>
                 </div>
             </form>
+            <div className="card">
+                <h2>Filters</h2>
+                <div className="row">
+                    <select
+                        value={statusFilter}
+                        onChange={(event) => setStatusFilter(event.target.value)}
+                        className="select"
+                    >
+                        <option value="all">All status</option>
+                        <option value="todo">Todo</option>
+                        <option value="in-progress">In progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                    <select
+                        value={categoryFilter}
+                        onChange={(event) => setCategoryFilter(event.target.value)}
+                        className="select"
+                    >
+                        <option value="all">All categories</option>
+                        <option value="work">Work</option>
+                        <option value="personal">Personal</option>
+                        <option value="study">Study</option>
+                        <option value="health">Health</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <input
+                        type="search"
+                        placeholder="Search tasks"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        className="input"
+                    />
+                </div>
+            </div>
             {error && <p className="error">{error}</p>}
             {loading ? (
                 <p className="muted">Loading...</p>
             ) : (
                 <ul className="task-list">
-                    {tasks.map((task) => (
+                    {filteredTasks.map((task) => (
                         <li key={task._id}>
                             <div className="card">
                                 {editingId === task._id ? (
@@ -224,6 +306,17 @@ const Tasks = () => {
                                                     <option value="in-progress">In progress</option>
                                                     <option value="done">Done</option>
                                                 </select>
+                                                <select
+                                                    value={editCategory}
+                                                    onChange={(event) => setEditCategory(event.target.value)}
+                                                    className="select"
+                                                >
+                                                    <option value="work">Work</option>
+                                                    <option value="personal">Personal</option>
+                                                    <option value="study">Study</option>
+                                                    <option value="health">Health</option>
+                                                    <option value="other">Other</option>
+                                                </select>
                                                 <input
                                                     type="date"
                                                     value={editDueDate}
@@ -239,9 +332,10 @@ const Tasks = () => {
                                     </form>
                                 ) : (
                                     <>
-                                        <div>
+                                        <div className="task-header">
                                             <h3 className="task-title">{task.title}</h3>
                                             <span className={`pill ${task.status}`}>{task.status}</span>
+                                            <span className="pill">{task.category || "other"}</span>
                                         </div>
                                         {task.description && <p>{task.description}</p>}
                                         <div className="task-meta">
@@ -249,6 +343,9 @@ const Tasks = () => {
                                             <span>Time left: {formatTimeLeft(task.dueDate)}</span>
                                         </div>
                                         <div className="row">
+                                            <button type="button" className="button secondary" onClick={() => cycleStatus(task)}>
+                                                Next status
+                                            </button>
                                             <button type="button" className="button secondary" onClick={() => startEdit(task)}>
                                                 Edit
                                             </button>

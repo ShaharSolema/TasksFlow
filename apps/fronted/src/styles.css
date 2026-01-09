@@ -250,6 +250,13 @@ a:hover {
   margin: 0;
 }
 
+.task-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .task-meta {
   display: flex;
   gap: 12px;
