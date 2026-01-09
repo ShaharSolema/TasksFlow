@@ -26,9 +26,9 @@ const Register = () => {
     };
 
     return (
-        <div>
-            <h1>Register</h1>
-            <form onSubmit={handleSubmit}>
+        <div className="page">
+            <form onSubmit={handleSubmit} className="card auth-card">
+                <h2>Create your account</h2>
                 <label>
                     Username
                     <input
@@ -36,6 +36,7 @@ const Register = () => {
                         value={username}
                         onChange={(event) => setUsername(event.target.value)}
                         required
+                        className="input"
                     />
                 </label>
                 <label>
@@ -45,6 +46,7 @@ const Register = () => {
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         required
+                        className="input"
                     />
                 </label>
                 <label>
@@ -54,14 +56,15 @@ const Register = () => {
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         required
+                        className="input"
                     />
                 </label>
-                {error && <p>{error}</p>}
-                <button type="submit" disabled={loading}>
+                {error && <p className="error">{error}</p>}
+                <button type="submit" className="button" disabled={loading}>
                     {loading ? "Creating..." : "Register"}
                 </button>
             </form>
-            <p>
+            <p className="footer-note">
                 Already registered? <Link to="/login">Login</Link>
             </p>
         </div>

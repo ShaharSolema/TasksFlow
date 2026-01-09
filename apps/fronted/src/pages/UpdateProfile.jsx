@@ -32,15 +32,16 @@ const UpdateProfile = () => {
     };
 
     return (
-        <div>
-            <h1>Update Profile</h1>
-            <form onSubmit={handleSubmit}>
+        <div className="page">
+            <form onSubmit={handleSubmit} className="card auth-card">
+                <h2>Update Profile</h2>
                 <label>
                     Username
                     <input
                         type="text"
                         value={username}
                         onChange={(event) => setUsername(event.target.value)}
+                        className="input"
                     />
                 </label>
                 <label>
@@ -49,11 +50,12 @@ const UpdateProfile = () => {
                         type="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
+                        className="input"
                     />
                 </label>
-                {message && <p>{message}</p>}
-                {error && <p>{error}</p>}
-                <button type="submit" disabled={loading}>
+                {message && <p className="muted">{message}</p>}
+                {error && <p className="error">{error}</p>}
+                <button type="submit" className="button" disabled={loading}>
                     {loading ? "Saving..." : "Save"}
                 </button>
             </form>

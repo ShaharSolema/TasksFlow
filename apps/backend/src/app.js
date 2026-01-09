@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import authRouter from '../routes/user.route.js';
 import taskRouter from '../routes/task.route.js';
+import adminRouter from '../routes/admin.route.js';
 const app = express();// Initialize Express app
 app.use(express.json());
 app.use(cookieParser());
@@ -14,6 +15,7 @@ app.use(cors({
 //routes
 app.use('/api/auth', authRouter);
 app.use('/api/tasks', taskRouter);
+app.use('/api/admin', adminRouter);
 app.get('/', (req, res) => {
     res.json({ status: 'ok' });
 });

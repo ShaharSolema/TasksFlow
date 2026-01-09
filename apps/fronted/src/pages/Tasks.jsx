@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext.jsx";
 import { API_BASE } from "../lib/api.js";
 
 const Tasks = () => {
-    const { logout } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -155,39 +153,29 @@ const Tasks = () => {
         }
     };
 
-    const cardStyle = {
-        padding: "16px",
-        border: "1px solid #ddd",
-        borderRadius: "8px",
-        marginBottom: "12px"
-    };
-
     return (
-        <div style={{ maxWidth: "720px", margin: "0 auto", padding: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h1>Your Tasks</h1>
-                <button type="button" onClick={logout}>
-                    Logout
-                </button>
-            </div>
-            <form onSubmit={handleCreate} style={cardStyle}>
+        <div className="page">
+            <h1>Your Tasks</h1>
+            <form onSubmit={handleCreate} className="card">
                 <h2>Create a task</h2>
-                <div style={{ display: "grid", gap: "8px" }}>
+                <div className="form-grid">
                     <input
                         type="text"
                         placeholder="Task title"
                         value={title}
                         onChange={(event) => setTitle(event.target.value)}
                         required
+                        className="input"
                     />
                     <textarea
                         placeholder="Short description"
                         value={description}
                         onChange={(event) => setDescription(event.target.value)}
                         rows={3}
+                        className="textarea"
                     />
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                    <div className="row">
+                        <select value={status} onChange={(event) => setStatus(event.target.value)} className="select">
                             <option value="todo">Todo</option>
                             <option value="in-progress">In progress</option>
                             <option value="done">Done</option>
@@ -196,37 +184,41 @@ const Tasks = () => {
                             type="date"
                             value={dueDate}
                             onChange={(event) => setDueDate(event.target.value)}
+                            className="input"
                         />
-                        <button type="submit">Add</button>
+                        <button type="submit" className="button">Add</button>
                     </div>
                 </div>
             </form>
-            {error && <p>{error}</p>}
+            {error && <p className="error">{error}</p>}
             {loading ? (
-                <p>Loading...</p>
+                <p className="muted">Loading...</p>
             ) : (
-                <ul>
+                <ul className="task-list">
                     {tasks.map((task) => (
                         <li key={task._id}>
-                            <div style={cardStyle}>
+                            <div className="card">
                                 {editingId === task._id ? (
                                     <form onSubmit={handleUpdate}>
-                                        <div style={{ display: "grid", gap: "8px" }}>
+                                        <div className="form-grid">
                                             <input
                                                 type="text"
                                                 value={editTitle}
                                                 onChange={(event) => setEditTitle(event.target.value)}
                                                 required
+                                                className="input"
                                             />
                                             <textarea
                                                 value={editDescription}
                                                 onChange={(event) => setEditDescription(event.target.value)}
                                                 rows={3}
+                                                className="textarea"
                                             />
-                                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                            <div className="row">
                                                 <select
                                                     value={editStatus}
                                                     onChange={(event) => setEditStatus(event.target.value)}
+                                                    className="select"
                                                 >
                                                     <option value="todo">Todo</option>
                                                     <option value="in-progress">In progress</option>
@@ -236,9 +228,10 @@ const Tasks = () => {
                                                     type="date"
                                                     value={editDueDate}
                                                     onChange={(event) => setEditDueDate(event.target.value)}
+                                                    className="input"
                                                 />
-                                                <button type="submit">Save</button>
-                                                <button type="button" onClick={cancelEdit}>
+                                                <button type="submit" className="button">Save</button>
+                                                <button type="button" className="button secondary" onClick={cancelEdit}>
                                                     Cancel
                                                 </button>
                                             </div>
@@ -247,16 +240,19 @@ const Tasks = () => {
                                 ) : (
                                     <>
                                         <div>
-                                            <strong>{task.title}</strong> ({task.status})
+                                            <h3 className="task-title">{task.title}</h3>
+                                            <span className={`pill ${task.status}`}>{task.status}</span>
                                         </div>
-                                        {task.description && <div>{task.description}</div>}
-                                        <div>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "None"}</div>
-                                        <div>Time left: {formatTimeLeft(task.dueDate)}</div>
-                                        <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                                            <button type="button" onClick={() => startEdit(task)}>
+                                        {task.description && <p>{task.description}</p>}
+                                        <div className="task-meta">
+                                            <span>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "None"}</span>
+                                            <span>Time left: {formatTimeLeft(task.dueDate)}</span>
+                                        </div>
+                                        <div className="row">
+                                            <button type="button" className="button secondary" onClick={() => startEdit(task)}>
                                                 Edit
                                             </button>
-                                            <button type="button" onClick={() => handleDelete(task._id)}>
+                                            <button type="button" className="button danger" onClick={() => handleDelete(task._id)}>
                                                 Delete
                                             </button>
                                         </div>

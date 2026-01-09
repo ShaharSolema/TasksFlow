@@ -25,9 +25,9 @@ const Login = () => {
     };
 
     return (
-        <div>
-            <h1>Login</h1>
-            <form onSubmit={handleSubmit}>
+        <div className="page">
+            <form onSubmit={handleSubmit} className="card auth-card">
+                <h2>Welcome back</h2>
                 <label>
                     Email
                     <input
@@ -35,6 +35,7 @@ const Login = () => {
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         required
+                        className="input"
                     />
                 </label>
                 <label>
@@ -44,14 +45,15 @@ const Login = () => {
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         required
+                        className="input"
                     />
                 </label>
-                {error && <p>{error}</p>}
-                <button type="submit" disabled={loading}>
+                {error && <p className="error">{error}</p>}
+                <button type="submit" className="button" disabled={loading}>
                     {loading ? "Signing in..." : "Login"}
                 </button>
             </form>
-            <p>
+            <p className="footer-note">
                 No account? <Link to="/register">Register</Link>
             </p>
         </div>
