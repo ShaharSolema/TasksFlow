@@ -1,4 +1,5 @@
 import { Task } from "../models/task.model.js";
+import { Job } from "../models/job.model.js";
 import { User } from "../models/user.model.js";
 
 const getAnalytics = async (req, res) => {
@@ -50,16 +51,64 @@ const getAnalytics = async (req, res) => {
             }
         ]);
 
+        const jobsPerDay = await Job.aggregate([
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        const jobStatusDistribution = await Job.aggregate([
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const jobTypeDistribution = await Job.aggregate([
+            {
+                $group: {
+                    _id: "$jobType",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const topCompanies = await Job.aggregate([
+            { $group: { _id: "$company", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 },
+            {
+                $project: {
+                    _id: 0,
+                    company: "$_id",
+                    count: 1
+                }
+            }
+        ]);
+
         const totalUsers = await User.countDocuments();
         const totalTasks = await Task.countDocuments();
+        const totalJobs = await Job.countDocuments();
         const completedTasks = await Task.countDocuments({ status: "done" });
         const completionRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
         return res.status(200).json({
-            kpis: { totalUsers, totalTasks, completionRate },
+            kpis: { totalUsers, totalTasks, totalJobs, completionRate },
             tasksPerDay,
             statusDistribution,
-            topUsers
+            topUsers,
+            jobsPerDay,
+            jobStatusDistribution,
+            jobTypeDistribution,
+            topCompanies
         });
     } catch (error) {
         console.error("Error loading analytics:", error);

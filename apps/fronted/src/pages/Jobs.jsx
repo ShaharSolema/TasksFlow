@@ -1,20 +1,36 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import {
+    Badge,
+    Button,
+    ColorInput,
+    Group,
+    MultiSelect,
+    Paper,
+    Select,
+    Stack,
+    Text,
+    TextInput,
+    Textarea,
+    Title
+} from "@mantine/core";
 import { API_BASE } from "../lib/api.js";
-
-const STATUS_ORDER = ["saved", "applied", "interview", "offer", "rejected"];
 
 const Jobs = () => {
     const [jobs, setJobs] = useState([]);
+    const routeLocation = useLocation();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     const [company, setCompany] = useState("");
     const [title, setTitle] = useState("");
-    const [status, setStatus] = useState("saved");
+    const [status, setStatus] = useState("");
     const [jobType, setJobType] = useState("full-time");
-    const [category, setCategory] = useState("");
+    const [labels, setLabels] = useState([]);
     const [priority, setPriority] = useState("medium");
     const [location, setLocation] = useState("");
     const [link, setLink] = useState("");
@@ -36,6 +52,18 @@ const Jobs = () => {
     const [typeFilter, setTypeFilter] = useState("all");
     const [priorityFilter, setPriorityFilter] = useState("all");
 
+    const [jobLabels, setJobLabels] = useState([]);
+    const [jobColumns, setJobColumns] = useState([]);
+    const [editingColumnKey, setEditingColumnKey] = useState(null);
+    const [newLabelName, setNewLabelName] = useState("");
+    const [newLabelColor, setNewLabelColor] = useState("#6a8c7d");
+    const [newColumnName, setNewColumnName] = useState("");
+    const [newColumnColor, setNewColumnColor] = useState("#e9dfcf");
+    const [quickAddStatus, setQuickAddStatus] = useState(null);
+    const [quickAddTitle, setQuickAddTitle] = useState("");
+    const [quickAddLoading, setQuickAddLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
     const loadJobs = async () => {
         try {
             setLoading(true);
@@ -53,9 +81,52 @@ const Jobs = () => {
         }
     };
 
+    const loadTags = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/api/tags/job`, {
+                credentials: "include"
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to load categories.");
+            }
+            const data = await response.json();
+            setJobLabels(data.labels || []);
+        } catch (err) {
+            setError(err.message || "Failed to load categories.");
+        }
+    };
+
+    const loadColumns = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/api/columns/job`, {
+                credentials: "include"
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to load columns.");
+            }
+            const data = await response.json();
+            setJobColumns(data.columns || []);
+            if (data.columns && data.columns.length > 0 && !status) {
+                setStatus(data.columns[0].key);
+            }
+        } catch (err) {
+            setError(err.message || "Failed to load columns.");
+        }
+    };
+
     useEffect(() => {
         loadJobs();
+        loadTags();
+        loadColumns();
     }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams(routeLocation.search);
+        const value = params.get("q") || "";
+        setSearch((prev) => (prev === value ? prev : value));
+    }, [routeLocation.search]);
 
     const filteredJobs = jobs.filter((job) => {
         const statusMatch = statusFilter === "all" || job.status === statusFilter;
@@ -70,40 +141,79 @@ const Jobs = () => {
     });
 
     const groupedJobs = useMemo(() => {
-        const base = {
-            saved: [],
-            applied: [],
-            interview: [],
-            offer: [],
-            rejected: []
-        };
+        const base = {};
+        jobColumns.forEach((col) => {
+            base[col.key] = [];
+        });
         for (const job of filteredJobs) {
             if (base[job.status]) {
                 base[job.status].push(job);
             }
         }
         return base;
-    }, [filteredJobs]);
+    }, [filteredJobs, jobColumns]);
 
     const onDragEnd = async (result) => {
         if (!result.destination) return;
-        const { destination, draggableId } = result;
+        const { destination, draggableId, source } = result;
         const nextStatus = destination.droppableId;
         const job = jobs.find((item) => item._id === draggableId);
-        if (!job || job.status === nextStatus) return;
+        if (!job) return;
+        const previousJobs = jobs;
+        const jobColumnsOrder = jobColumns.map((col) => col.key);
+        const withoutJob = jobs.filter((item) => item._id !== draggableId);
+        const columnsMap = {};
+        jobColumnsOrder.forEach((key) => {
+            columnsMap[key] = [];
+        });
+        withoutJob.forEach((item) => {
+            if (!columnsMap[item.status]) {
+                columnsMap[item.status] = [];
+            }
+            columnsMap[item.status].push(item);
+        });
+        const destinationJobs = columnsMap[nextStatus] || [];
+        const movedJob = { ...job, status: nextStatus };
+        const insertIndex = Math.max(0, Math.min(destination.index, destinationJobs.length));
+        destinationJobs.splice(insertIndex, 0, movedJob);
+        columnsMap[nextStatus] = destinationJobs;
+        const updatedJobs = [];
+        jobColumnsOrder.forEach((key) => {
+            if (columnsMap[key]) {
+                updatedJobs.push(...columnsMap[key]);
+            }
+        });
+        setJobs(updatedJobs);
         try {
-            const response = await fetch(`${API_BASE}/api/jobs/${draggableId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ status: nextStatus })
+            const affectedStatuses = new Set([source.droppableId, destination.droppableId]);
+            const updates = [];
+            affectedStatuses.forEach((statusKey) => {
+                const list = columnsMap[statusKey] || [];
+                list.forEach((item, index) => {
+                    updates.push({
+                        id: item._id,
+                        status: statusKey,
+                        order: index
+                    });
+                });
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
+            const responses = await Promise.all(
+                updates.map((item) =>
+                    fetch(`${API_BASE}/api/jobs/${item.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ status: item.status, order: item.order })
+                    })
+                )
+            );
+            const failed = responses.find((item) => !item.ok);
+            if (failed) {
+                const data = await failed.json().catch(() => ({}));
                 throw new Error(data.message || "Failed to update job.");
             }
-            await loadJobs();
         } catch (err) {
+            setJobs(previousJobs);
             setError(err.message || "Failed to update job.");
         }
     };
@@ -127,11 +237,11 @@ const Jobs = () => {
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify({
-                    company,
+                    company: company.trim() || undefined,
                     title,
                     status,
                     jobType,
-                    category,
+                    labels,
                     priority,
                     location,
                     link,
@@ -150,9 +260,9 @@ const Jobs = () => {
             }
             setCompany("");
             setTitle("");
-            setStatus("saved");
+            setStatus(jobColumns[0]?.key || "");
             setJobType("full-time");
-            setCategory("");
+            setLabels([]);
             setPriority("medium");
             setLocation("");
             setLink("");
@@ -169,14 +279,42 @@ const Jobs = () => {
         }
     };
 
+    const handleQuickAdd = async (statusKey) => {
+        const titleValue = quickAddTitle.trim();
+        if (!titleValue) return;
+        setQuickAddLoading(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/jobs`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    title: titleValue,
+                    status: statusKey
+                })
+            });
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.message || "Failed to create job.");
+            }
+            setQuickAddTitle("");
+            setQuickAddStatus(null);
+            await loadJobs();
+        } catch (err) {
+            setError(err.message || "Failed to create job.");
+        } finally {
+            setQuickAddLoading(false);
+        }
+    };
+
     const startEdit = (job) => {
         setEditingId(job._id);
         setEditData({
             company: job.company || "",
             title: job.title || "",
-            status: job.status || "saved",
+            status: job.status || "",
             jobType: job.jobType || "full-time",
-            category: job.category || "",
+            labels: job.labels || [],
             priority: job.priority || "medium",
             location: job.location || "",
             link: job.link || "",
@@ -193,6 +331,12 @@ const Jobs = () => {
     const cancelEdit = () => {
         setEditingId(null);
         setEditData({});
+        setIsModalOpen(false);
+    };
+
+    const openJobModal = (job) => {
+        startEdit(job);
+        setIsModalOpen(true);
     };
 
     const handleUpdate = async (event) => {
@@ -269,293 +413,572 @@ const Jobs = () => {
         }
     };
 
+    const labelOptions = useMemo(
+        () => jobLabels.map((item) => ({ value: item.name, label: item.name })),
+        [jobLabels]
+    );
+
+    const labelColors = useMemo(() => {
+        const map = {};
+        jobLabels.forEach((item) => {
+            map[item.name] = item.color || "#c7d6cd";
+        });
+        return map;
+    }, [jobLabels]);
+
+    const statusOptions = useMemo(
+        () => jobColumns.map((col) => ({ value: col.key, label: col.name })),
+        [jobColumns]
+    );
+
+    const columnMeta = useMemo(() => {
+        const map = {};
+        jobColumns.forEach((col) => {
+            map[col.key] = { name: col.name, color: col.color || "#c7d6cd" };
+        });
+        return map;
+    }, [jobColumns]);
+
+    const addLabel = async () => {
+        if (!newLabelName.trim()) return;
+        try {
+            const response = await fetch(`${API_BASE}/api/tags/job/labels`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ name: newLabelName, color: newLabelColor })
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to add label.");
+            }
+            const data = await response.json();
+            setJobLabels(data.labels || []);
+            setNewLabelName("");
+        } catch (err) {
+            setError(err.message || "Failed to add label.");
+        }
+    };
+
+    const addColumn = async () => {
+        if (!newColumnName.trim()) return;
+        try {
+            const response = await fetch(`${API_BASE}/api/columns/job`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ name: newColumnName, color: newColumnColor })
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to add column.");
+            }
+            const data = await response.json();
+            setJobColumns(data.columns || []);
+            setNewColumnName("");
+        } catch (err) {
+            setError(err.message || "Failed to add column.");
+        }
+    };
+
+    const updateColumn = async (columnKey, updates) => {
+        try {
+            const response = await fetch(`${API_BASE}/api/columns/job/${columnKey}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(updates)
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to update column.");
+            }
+            const data = await response.json();
+            setJobColumns(data.columns || []);
+        } catch (err) {
+            setError(err.message || "Failed to update column.");
+        }
+    };
+
+    const deleteColumn = async (columnKey) => {
+        try {
+            const response = await fetch(`${API_BASE}/api/columns/job/${columnKey}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to delete column.");
+            }
+            const data = await response.json();
+            setJobColumns(data.columns || []);
+        } catch (err) {
+            setError(err.message || "Failed to delete column.");
+        }
+    };
+
     const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : "None");
+    const updateQuery = (value) => {
+        const params = new URLSearchParams(routeLocation.search);
+        if (value) {
+            params.set("q", value);
+        } else {
+            params.delete("q");
+        }
+        const next = params.toString();
+        navigate(`${routeLocation.pathname}${next ? `?${next}` : ""}`, { replace: true });
+    };
     return (
+        <>
         <div className="page">
-            <div className="hero">
+            <Group justify="space-between" mb="md">
                 <div>
-                    <h1>Job Tracker</h1>
-                    <p className="muted">Track applications, interviews, and offers.</p>
+                    <Title order={2}>Job Tracker</Title>
+                    <Text c="dimmed">Track applications, interviews, and offers.</Text>
                 </div>
-                <span className="badge">{filteredJobs.length} jobs</span>
-            </div>
+                <Badge size="lg" radius="xl">{filteredJobs.length} jobs</Badge>
+            </Group>
+
+            <Group mb="lg" wrap="wrap">
+                <Select
+                    data={[{ value: "all", label: "All status" }, ...statusOptions]}
+                    value={statusFilter}
+                    onChange={(value) => setStatusFilter(value || "all")}
+                />
+                <Select
+                    data={[
+                        { value: "all", label: "All types" },
+                        { value: "full-time", label: "Full-time" },
+                        { value: "part-time", label: "Part-time" },
+                        { value: "contract", label: "Contract" },
+                        { value: "internship", label: "Internship" },
+                        { value: "freelance", label: "Freelance" }
+                    ]}
+                    value={typeFilter}
+                    onChange={(value) => setTypeFilter(value || "all")}
+                />
+                <Select
+                    data={[
+                        { value: "all", label: "All priorities" },
+                        { value: "low", label: "Low" },
+                        { value: "medium", label: "Medium" },
+                        { value: "high", label: "High" }
+                    ]}
+                    value={priorityFilter}
+                    onChange={(value) => setPriorityFilter(value || "all")}
+                />
+                <TextInput
+                    placeholder="Search jobs"
+                    value={search}
+                    onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setSearch(value);
+                        updateQuery(value);
+                    }}
+                />
+            </Group>
+            <Text size="sm" c="dimmed" mb="md">
+                Tip: click any job card to open the full editor.
+            </Text>
 
             <div className="task-grid">
                 <div className="task-board">
-                    {error && <p className="error">{error}</p>}
+                    <Paper className="glass-panel" radius="lg" p="lg" shadow="sm">
+                        <Title order={4}>Job labels</Title>
+                        <Stack mt="sm">
+                            <Group wrap="wrap">
+                                <TextInput
+                                    placeholder="New label"
+                                    value={newLabelName}
+                                    onChange={(event) => setNewLabelName(event.currentTarget.value)}
+                                />
+                                <ColorInput
+                                    value={newLabelColor}
+                                    onChange={setNewLabelColor}
+                                />
+                                <Button variant="light" onClick={addLabel}>
+                                    Add label
+                                </Button>
+                            </Group>
+                        </Stack>
+                    </Paper>
+
+                    <Paper className="glass-panel" radius="lg" p="lg" shadow="sm" mt="md">
+                        <Title order={4}>Job columns</Title>
+                        <Stack mt="sm">
+                            <Group wrap="wrap">
+                                <TextInput
+                                    placeholder="New column"
+                                    value={newColumnName}
+                                    onChange={(event) => setNewColumnName(event.currentTarget.value)}
+                                />
+                                <ColorInput
+                                    value={newColumnColor}
+                                    onChange={setNewColumnColor}
+                                />
+                                <Button variant="light" onClick={addColumn}>
+                                    Add column
+                                </Button>
+                            </Group>
+                            <Stack gap="xs">
+                                {jobColumns.map((column) => (
+                                    <Group key={column.key} wrap="wrap">
+                                        <TextInput
+                                            value={column.name}
+                                            onChange={(event) =>
+                                                updateColumn(column.key, { name: event.currentTarget.value })
+                                            }
+                                        />
+                                        <ColorInput
+                                            value={column.color || "#e9dfcf"}
+                                            onChange={(value) => updateColumn(column.key, { color: value })}
+                                        />
+                                        <Button color="red" variant="light" onClick={() => deleteColumn(column.key)}>
+                                            Delete
+                                        </Button>
+                                    </Group>
+                                ))}
+                            </Stack>
+                        </Stack>
+                    </Paper>
+                </div>
+                <div className="task-board">
+                    {error && <Text c="red">{error}</Text>}
                     {loading ? (
-                        <p className="muted">Loading...</p>
+                        <Text c="dimmed">Loading...</Text>
                     ) : (
                         <DragDropContext onDragEnd={onDragEnd}>
-                            <div className="kanban">
-                                {STATUS_ORDER.map((statusKey) => (
-                                    <Droppable key={statusKey} droppableId={statusKey}>
+                            <div className="kanban-scroll">
+                                <div className="kanban">
+                                {jobColumns.map((column) => (
+                                    <Droppable key={column.key} droppableId={column.key}>
                                         {(provided) => (
                                             <div className="kanban-column" ref={provided.innerRef} {...provided.droppableProps}>
-                                                <div className="kanban-header">
-                                                    <h3>{statusKey.replace("-", " ")}</h3>
-                                                    <span className="badge">{groupedJobs[statusKey].length}</span>
-                                                </div>
-                                                <div className="kanban-list">
-                                                    {groupedJobs[statusKey].map((job, index) => (
+                                                <Group justify="space-between" mb="sm">
+                                                    <Group gap="xs">
+                                                        {editingColumnKey === column.key ? (
+                                                            <TextInput
+                                                                value={column.name}
+                                                                onChange={(event) =>
+                                                                    updateColumn(column.key, { name: event.currentTarget.value })
+                                                                }
+                                                                onBlur={() => setEditingColumnKey(null)}
+                                                            />
+                                                        ) : (
+                                                            <Text
+                                                                fw={600}
+                                                                onClick={() => setEditingColumnKey(column.key)}
+                                                                style={{ color: column.color || "#c7d6cd" }}
+                                                            >
+                                                                {column.name}
+                                                            </Text>
+                                                        )}
+                                                        <Button
+                                                            size="xs"
+                                                            variant="light"
+                                                            onClick={() => setQuickAddStatus(column.key)}
+                                                        >
+                                                            +
+                                                        </Button>
+                                                    </Group>
+                                                    <Badge variant="light">{groupedJobs[column.key]?.length || 0}</Badge>
+                                                </Group>
+                                                {quickAddStatus === column.key && (
+                                                    <Group mb="sm" wrap="wrap">
+                                                        <TextInput
+                                                            placeholder="Quick job title"
+                                                            value={quickAddTitle}
+                                                            onChange={(event) => setQuickAddTitle(event.currentTarget.value)}
+                                                            required
+                                                        />
+                                                        <Button
+                                                            size="xs"
+                                                            onClick={() => handleQuickAdd(column.key)}
+                                                            loading={quickAddLoading}
+                                                        >
+                                                            Add
+                                                        </Button>
+                                                    </Group>
+                                                )}
+                                                <Stack className="kanban-list" gap="sm">
+                                                    {(groupedJobs[column.key] || []).map((job, index) => (
                                                         <Draggable key={job._id} draggableId={job._id} index={index}>
-                                                            {(dragProvided) => (
-                                                                <div
-                                                                    className="card task-card"
-                                                                    ref={dragProvided.innerRef}
-                                                                    {...dragProvided.draggableProps}
-                                                                    {...dragProvided.dragHandleProps}
-                                                                >
-                                                                    {editingId === job._id ? (
-                                                                        <form onSubmit={handleUpdate}>
-                                                                            <div className="form-grid">
-                                                                                <input
-                                                                                    type="text"
-                                                                                    value={editData.company || ""}
-                                                                                    onChange={(event) =>
-                                                                                        setEditData((prev) => ({
-                                                                                            ...prev,
-                                                                                            company: event.target.value
-                                                                                        }))
-                                                                                    }
-                                                                                    className="input"
-                                                                                    placeholder="Company"
-                                                                                    required
-                                                                                />
-                                                                                <input
-                                                                                    type="text"
-                                                                                    value={editData.title || ""}
-                                                                                    onChange={(event) =>
-                                                                                        setEditData((prev) => ({
-                                                                                            ...prev,
-                                                                                            title: event.target.value
-                                                                                        }))
-                                                                                    }
-                                                                                    className="input"
-                                                                                    placeholder="Role"
-                                                                                    required
-                                                                                />
-                                                                                <textarea
-                                                                                    value={editData.notes || ""}
-                                                                                    onChange={(event) =>
-                                                                                        setEditData((prev) => ({
-                                                                                            ...prev,
-                                                                                            notes: event.target.value
-                                                                                        }))
-                                                                                    }
-                                                                                    className="textarea"
-                                                                                    rows={3}
-                                                                                />
-                                                                                <div className="row">
-                                                                                    <select
-                                                                                        value={editData.status}
-                                                                                        onChange={(event) =>
-                                                                                            setEditData((prev) => ({
-                                                                                                ...prev,
-                                                                                                status: event.target.value
-                                                                                            }))
-                                                                                        }
-                                                                                        className="select"
-                                                                                    >
-                                                                                        {STATUS_ORDER.map((value) => (
-                                                                                            <option key={value} value={value}>
-                                                                                                {value}
-                                                                                            </option>
-                                                                                        ))}
-                                                                                    </select>
-                                                                                    <select
-                                                                                        value={editData.jobType}
-                                                                                        onChange={(event) =>
-                                                                                            setEditData((prev) => ({
-                                                                                                ...prev,
-                                                                                                jobType: event.target.value
-                                                                                            }))
-                                                                                        }
-                                                                                        className="select"
-                                                                                    >
-                                                                                        <option value="full-time">Full-time</option>
-                                                                                        <option value="part-time">Part-time</option>
-                                                                                        <option value="contract">Contract</option>
-                                                                                        <option value="internship">Internship</option>
-                                                                                        <option value="freelance">Freelance</option>
-                                                                                    </select>
-                                                                                    <select
-                                                                                        value={editData.priority}
-                                                                                        onChange={(event) =>
-                                                                                            setEditData((prev) => ({
-                                                                                                ...prev,
-                                                                                                priority: event.target.value
-                                                                                            }))
-                                                                                        }
-                                                                                        className="select"
-                                                                                    >
-                                                                                        <option value="low">Low</option>
-                                                                                        <option value="medium">Medium</option>
-                                                                                        <option value="high">High</option>
-                                                                                    </select>
-                                                                                </div>
-                                                                                <div className="task-actions">
-                                                                                    <button type="submit" className="button">Save</button>
-                                                                                    <button type="button" className="button secondary" onClick={cancelEdit}>
-                                                                                        Cancel
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        </form>
-                                                                    ) : (
-                                                                        <>
-                                                                            <div className="task-header">
+                                                            {(dragProvided, snapshot) => {
+                                                                const card = (
+                                                                    <Paper
+                                                                        ref={dragProvided.innerRef}
+                                                                        {...dragProvided.draggableProps}
+                                                                        {...dragProvided.dragHandleProps}
+                                                                        shadow="sm"
+                                                                        radius="md"
+                                                                        p="md"
+                                                                        onClick={() => openJobModal(job)}
+                                                                        style={{
+                                                                            ...dragProvided.draggableProps.style,
+                                                                            zIndex: snapshot.isDragging ? 9999 : "auto",
+                                                                            cursor: "pointer"
+                                                                        }}
+                                                                    >
+                                                                        <Stack gap={6}>
+                                                                            <Group justify="space-between" align="flex-start">
                                                                                 <div>
-                                                                                    <h4 className="task-title">{job.title}</h4>
-                                                                                    <p className="muted">{job.company}</p>
+                                                                                    <Text fw={600}>{job.title}</Text>
+                                                                                    <Text size="sm" c="dimmed">{job.company}</Text>
                                                                                 </div>
-                                                                                <span className="pill category-pill">{job.jobType}</span>
-                                                                            </div>
-                                                                            {job.category && <p className="muted">Category: {job.category}</p>}
-                                                                            <div className="task-meta">
-                                                                                <span>Priority: {job.priority}</span>
-                                                                                <span>Applied: {formatDate(job.appliedDate)}</span>
-                                                                            </div>
-                                                                            <div className="task-meta">
-                                                                                <span>Interview: {formatDate(job.nextInterviewDate)}</span>
-                                                                                <span>Follow up: {formatDate(job.followUpDate)}</span>
-                                                                            </div>
-                                                                            {job.expectedSalary && (
-                                                                                <p className="muted">Expected: {job.expectedSalary} {job.salaryCurrency}</p>
+                                                                                {columnMeta[job.status] && (
+                                                                                    <Badge
+                                                                                        variant="light"
+                                                                                        style={{
+                                                                                            color: columnMeta[job.status].color,
+                                                                                            border: `1px solid ${columnMeta[job.status].color}`
+                                                                                        }}
+                                                                                    >
+                                                                                        {columnMeta[job.status].name}
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </Group>
+                                                                            {Array.isArray(job.labels) && job.labels.length > 0 && (
+                                                                                <Group gap={6} wrap="wrap">
+                                                                                    {job.labels.map((label) => (
+                                                                                        <Badge
+                                                                                            key={label}
+                                                                                            variant="light"
+                                                                                            style={{
+                                                                                                color: labelColors[label] || "#c7d6cd",
+                                                                                                border: `1px solid ${labelColors[label] || "#c7d6cd"}`
+                                                                                            }}
+                                                                                        >
+                                                                                            {label}
+                                                                                        </Badge>
+                                                                                    ))}
+                                                                                </Group>
                                                                             )}
-                                                                            <div className="task-actions">
-                                                                                <button type="button" className="button secondary" onClick={() => startEdit(job)}>
-                                                                                    Edit
-                                                                                </button>
-                                                                                <button type="button" className="button danger" onClick={() => handleDelete(job._id)}>
+                                                                            <Text size="sm" c="dimmed">
+                                                                                Priority: {job.priority} - Applied: {formatDate(job.appliedDate)}
+                                                                            </Text>
+                                                                            <Text size="sm" c="dimmed">
+                                                                                Interview: {formatDate(job.nextInterviewDate)} - Follow up: {formatDate(job.followUpDate)}
+                                                                            </Text>
+                                                                            {job.expectedSalary && (
+                                                                                <Text size="sm" c="dimmed">
+                                                                                    Expected: {job.expectedSalary} {job.salaryCurrency}
+                                                                                </Text>
+                                                                            )}
+                                                                            <Group>
+                                                                                <Button
+                                                                                    size="xs"
+                                                                                    color="red"
+                                                                                    onClick={(event) => {
+                                                                                        event.stopPropagation();
+                                                                                        handleDelete(job._id);
+                                                                                    }}
+                                                                                >
                                                                                     Delete
-                                                                                </button>
-                                                                            </div>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            )}
+                                                                                </Button>
+                                                                            </Group>
+                                                                        </Stack>
+                                                                    </Paper>
+                                                                );
+                                                                if (snapshot.isDragging) {
+                                                                    return createPortal(card, document.body);
+                                                                }
+                                                                return card;
+                                                            }}
                                                         </Draggable>
                                                     ))}
                                                     {provided.placeholder}
-                                                </div>
+                                                </Stack>
                                             </div>
                                         )}
                                     </Droppable>
                                 ))}
+                                </div>
                             </div>
                         </DragDropContext>
                     )}
                 </div>
 
                 <div className="task-board">
-                    <form onSubmit={handleCreate} className="card sticky">
-                        <h2>Add job</h2>
-                        <div className="form-grid">
-                            <input className="input" placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} required />
-                            <input className="input" placeholder="Role / Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                            <div className="row">
-                                <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                                    {STATUS_ORDER.map((value) => (
-                                        <option key={value} value={value}>{value}</option>
-                                    ))}
-                                </select>
-                                <select className="select" value={jobType} onChange={(e) => setJobType(e.target.value)}>
-                                    <option value="full-time">Full-time</option>
-                                    <option value="part-time">Part-time</option>
-                                    <option value="contract">Contract</option>
-                                    <option value="internship">Internship</option>
-                                    <option value="freelance">Freelance</option>
-                                </select>
-                                <select className="select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                </select>
-                            </div>
-                            <input className="input" placeholder="Category (optional)" value={category} onChange={(e) => setCategory(e.target.value)} />
-                            <input className="input" placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
-                            <input className="input" placeholder="Job link" value={link} onChange={(e) => setLink(e.target.value)} />
-                            <div className="row">
-                                <input
-                                    className="input"
-                                    placeholder="Expected salary"
-                                    value={expectedSalary}
-                                    onChange={(e) => setExpectedSalary(e.target.value)}
+                    <Paper className="sticky glass-panel" radius="lg" p="lg" shadow="sm">
+                        <Title order={4}>Add job</Title>
+                        <form onSubmit={handleCreate}>
+                            <Stack mt="sm">
+                                <TextInput placeholder="Company" value={company} onChange={(e) => setCompany(e.currentTarget.value)} />
+                                <TextInput placeholder="Role / Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
+                                <Group wrap="wrap">
+                                    <Select data={statusOptions} value={status} onChange={(value) => setStatus(value || "")} />
+                                    <Select
+                                        data={[
+                                            { value: "full-time", label: "Full-time" },
+                                            { value: "part-time", label: "Part-time" },
+                                            { value: "contract", label: "Contract" },
+                                            { value: "internship", label: "Internship" },
+                                            { value: "freelance", label: "Freelance" }
+                                        ]}
+                                        value={jobType}
+                                        onChange={(value) => setJobType(value || "full-time")}
+                                    />
+                                    <Select
+                                        data={[
+                                            { value: "low", label: "Low" },
+                                            { value: "medium", label: "Medium" },
+                                            { value: "high", label: "High" }
+                                        ]}
+                                        value={priority}
+                                        onChange={(value) => setPriority(value || "medium")}
+                                    />
+                                </Group>
+                                <MultiSelect
+                                    data={labelOptions}
+                                    value={labels}
+                                    onChange={setLabels}
+                                    placeholder="Labels"
                                 />
-                                <input
-                                    className="input"
-                                    placeholder="Currency"
-                                    value={salaryCurrency}
-                                    onChange={(e) => setSalaryCurrency(e.target.value)}
-                                />
-                                <button type="button" className="button secondary" onClick={estimateSalary}>
-                                    AI salary
-                                </button>
-                            </div>
-                            <textarea className="textarea" rows={3} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-                            <div className="row">
-                                <label className="muted">Applied</label>
-                                <input className="input" type="date" value={appliedDate} onChange={(e) => setAppliedDate(e.target.value)} />
-                                <label className="muted">Interview</label>
-                                <input className="input" type="date" value={nextInterviewDate} onChange={(e) => setNextInterviewDate(e.target.value)} />
-                            </div>
-                            <div className="row">
-                                <label className="muted">Follow up</label>
-                                <input className="input" type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} />
-                            </div>
-                            <div className="card">
-                                <h3>Reminders</h3>
-                                <div className="row">
-                                    <input className="input" type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} />
-                                    <input className="input" placeholder="Reminder note" value={reminderNote} onChange={(e) => setReminderNote(e.target.value)} />
-                                    <button type="button" className="button secondary" onClick={addReminder}>
-                                        Add
-                                    </button>
-                                </div>
-                                {reminders.length > 0 && (
-                                    <ul className="task-list">
-                                        {reminders.map((item, index) => (
-                                            <li key={`${item.date}-${index}`} className="muted">
-                                                {item.date} {item.note ? `- ${item.note}` : ""}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                            <button type="submit" className="button">Save job</button>
-                        </div>
-                    </form>
-
-                    <div className="card sticky">
-                        <h2>Filters</h2>
-                        <div className="filter-row">
-                            <select className="select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                                <option value="all">All status</option>
-                                {STATUS_ORDER.map((value) => (
-                                    <option key={value} value={value}>{value}</option>
-                                ))}
-                            </select>
-                            <select className="select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-                                <option value="all">All types</option>
-                                <option value="full-time">Full-time</option>
-                                <option value="part-time">Part-time</option>
-                                <option value="contract">Contract</option>
-                                <option value="internship">Internship</option>
-                                <option value="freelance">Freelance</option>
-                            </select>
-                            <select className="select" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-                                <option value="all">All priorities</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                            <input className="input" placeholder="Search jobs" value={search} onChange={(e) => setSearch(e.target.value)} />
-                        </div>
-                    </div>
+                                <TextInput placeholder="Location" value={location} onChange={(e) => setLocation(e.currentTarget.value)} />
+                                <TextInput placeholder="Job link" value={link} onChange={(e) => setLink(e.currentTarget.value)} />
+                                <Group wrap="wrap">
+                                    <TextInput placeholder="Expected salary" value={expectedSalary} onChange={(e) => setExpectedSalary(e.currentTarget.value)} />
+                                    <TextInput placeholder="Currency" value={salaryCurrency} onChange={(e) => setSalaryCurrency(e.currentTarget.value)} />
+                                    <Button variant="light" onClick={estimateSalary}>AI salary</Button>
+                                </Group>
+                                <Textarea minRows={3} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} />
+                                <Group wrap="wrap">
+                                    <Text size="sm" c="dimmed">Applied</Text>
+                                    <TextInput type="date" value={appliedDate} onChange={(e) => setAppliedDate(e.currentTarget.value)} />
+                                    <Text size="sm" c="dimmed">Interview</Text>
+                                    <TextInput type="date" value={nextInterviewDate} onChange={(e) => setNextInterviewDate(e.currentTarget.value)} />
+                                </Group>
+                                <Group wrap="wrap">
+                                    <Text size="sm" c="dimmed">Follow up</Text>
+                                    <TextInput type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.currentTarget.value)} />
+                                </Group>
+                                <Paper radius="md" p="sm" withBorder>
+                                    <Title order={5}>Reminders</Title>
+                                    <Group mt="xs" wrap="wrap">
+                                        <TextInput type="date" value={reminderDate} onChange={(e) => setReminderDate(e.currentTarget.value)} />
+                                        <TextInput placeholder="Reminder note" value={reminderNote} onChange={(e) => setReminderNote(e.currentTarget.value)} />
+                                        <Button variant="light" onClick={addReminder}>Add</Button>
+                                    </Group>
+                                    {reminders.length > 0 && (
+                                        <Stack mt="xs" gap={4}>
+                                            {reminders.map((item, index) => (
+                                                <Text key={`${item.date}-${index}`} size="sm" c="dimmed">
+                                                    {item.date} {item.note ? `- ${item.note}` : ""}
+                                                </Text>
+                                            ))}
+                                        </Stack>
+                                    )}
+                                </Paper>
+                                <Button type="submit">Save job</Button>
+                            </Stack>
+                        </form>
+                    </Paper>
                 </div>
             </div>
         </div>
+        {isModalOpen && (
+            <div className="modal-overlay" onClick={cancelEdit}>
+                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                    <Title order={4}>Edit job</Title>
+                    <form onSubmit={handleUpdate}>
+                        <Stack mt="sm">
+                            <TextInput
+                                value={editData.company || ""}
+                                onChange={(event) =>
+                                    setEditData((prev) => ({
+                                        ...prev,
+                                        company: event.currentTarget.value
+                                    }))
+                                }
+                                placeholder="Company"
+                            />
+                            <TextInput
+                                value={editData.title || ""}
+                                onChange={(event) =>
+                                    setEditData((prev) => ({
+                                        ...prev,
+                                        title: event.currentTarget.value
+                                    }))
+                                }
+                                placeholder="Role / Title"
+                                required
+                            />
+                            <Textarea
+                                value={editData.notes || ""}
+                                onChange={(event) =>
+                                    setEditData((prev) => ({
+                                        ...prev,
+                                        notes: event.currentTarget.value
+                                    }))
+                                }
+                                minRows={3}
+                                placeholder="Notes"
+                            />
+                            <Group wrap="wrap">
+                                <Select
+                                    data={statusOptions}
+                                    value={editData.status}
+                                    onChange={(value) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            status: value || ""
+                                        }))
+                                    }
+                                />
+                                <Select
+                                    data={[
+                                        { value: "full-time", label: "Full-time" },
+                                        { value: "part-time", label: "Part-time" },
+                                        { value: "contract", label: "Contract" },
+                                        { value: "internship", label: "Internship" },
+                                        { value: "freelance", label: "Freelance" }
+                                    ]}
+                                    value={editData.jobType}
+                                    onChange={(value) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            jobType: value || "full-time"
+                                        }))
+                                    }
+                                />
+                                <Select
+                                    data={[
+                                        { value: "low", label: "Low" },
+                                        { value: "medium", label: "Medium" },
+                                        { value: "high", label: "High" }
+                                    ]}
+                                    value={editData.priority}
+                                    onChange={(value) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            priority: value || "medium"
+                                        }))
+                                    }
+                                />
+                                <MultiSelect
+                                    data={labelOptions}
+                                    value={editData.labels || []}
+                                    onChange={(value) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            labels: value
+                                        }))
+                                    }
+                                    placeholder="Labels"
+                                />
+                            </Group>
+                            <Group>
+                                <Button type="submit">Save</Button>
+                                <Button variant="light" onClick={cancelEdit}>
+                                    Cancel
+                                </Button>
+                            </Group>
+                        </Stack>
+                    </form>
+                </div>
+            </div>
+        )}
+        </>
     );
 };
 

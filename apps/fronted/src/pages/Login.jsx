@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Button, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const Login = () => {
@@ -26,36 +27,33 @@ const Login = () => {
 
     return (
         <div className="page">
-            <form onSubmit={handleSubmit} className="card auth-card">
-                <h2>Welcome back</h2>
-                <label>
-                    Email
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        required
-                        className="input"
-                    />
-                </label>
-                <label>
-                    Password
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
-                        className="input"
-                    />
-                </label>
-                {error && <p className="error">{error}</p>}
-                <button type="submit" className="button" disabled={loading}>
-                    {loading ? "Signing in..." : "Login"}
-                </button>
-            </form>
-            <p className="footer-note">
+            <Paper className="auth-card" radius="lg" shadow="md" p="lg">
+                <form onSubmit={handleSubmit}>
+                    <Stack>
+                        <Title order={2}>Welcome back</Title>
+                        <TextInput
+                            label="Email"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            required
+                        />
+                        <PasswordInput
+                            label="Password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            required
+                        />
+                        {error && <Text c="red">{error}</Text>}
+                        <Button type="submit" loading={loading}>
+                            {loading ? "Signing in..." : "Login"}
+                        </Button>
+                    </Stack>
+                </form>
+            </Paper>
+            <Text className="footer-note">
                 No account? <Link to="/register">Register</Link>
-            </p>
+            </Text>
         </div>
     );
 };

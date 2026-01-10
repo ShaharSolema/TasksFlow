@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Button, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const Register = () => {
@@ -27,46 +28,39 @@ const Register = () => {
 
     return (
         <div className="page">
-            <form onSubmit={handleSubmit} className="card auth-card">
-                <h2>Create your account</h2>
-                <label>
-                    Username
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        required
-                        className="input"
-                    />
-                </label>
-                <label>
-                    Email
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        required
-                        className="input"
-                    />
-                </label>
-                <label>
-                    Password
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
-                        className="input"
-                    />
-                </label>
-                {error && <p className="error">{error}</p>}
-                <button type="submit" className="button" disabled={loading}>
-                    {loading ? "Creating..." : "Register"}
-                </button>
-            </form>
-            <p className="footer-note">
+            <Paper className="auth-card" radius="lg" shadow="md" p="lg">
+                <form onSubmit={handleSubmit}>
+                    <Stack>
+                        <Title order={2}>Create your account</Title>
+                        <TextInput
+                            label="Username"
+                            value={username}
+                            onChange={(event) => setUsername(event.target.value)}
+                            required
+                        />
+                        <TextInput
+                            label="Email"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            required
+                        />
+                        <PasswordInput
+                            label="Password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            required
+                        />
+                        {error && <Text c="red">{error}</Text>}
+                        <Button type="submit" loading={loading}>
+                            {loading ? "Creating..." : "Register"}
+                        </Button>
+                    </Stack>
+                </form>
+            </Paper>
+            <Text className="footer-note">
                 Already registered? <Link to="/login">Login</Link>
-            </p>
+            </Text>
         </div>
     );
 };

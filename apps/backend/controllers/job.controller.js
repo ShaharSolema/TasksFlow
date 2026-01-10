@@ -6,8 +6,10 @@ const createJob = async (req, res) => {
             company,
             title,
             status,
+            order,
             jobType,
             category,
+            labels,
             priority,
             location,
             link,
@@ -21,16 +23,18 @@ const createJob = async (req, res) => {
             reminders
         } = req.body;
 
-        if (!company || !title) {
-            return res.status(400).json({ message: "Company and title are required." });
+        if (!title) {
+            return res.status(400).json({ message: "Title is required." });
         }
 
         const job = new Job({
-            company: company.trim(),
+            company: company ? company.trim() : "",
             title: title.trim(),
             status,
+            order: Number.isFinite(order) ? order : 0,
             jobType,
             category,
+            labels,
             priority,
             location,
             link,
@@ -55,7 +59,7 @@ const createJob = async (req, res) => {
 
 const listJobs = async (req, res) => {
     try {
-        const jobs = await Job.find({ owner: req.user._id }).sort({ createdAt: -1 });
+        const jobs = await Job.find({ owner: req.user._id }).sort({ order: 1, createdAt: -1 });
         return res.status(200).json(jobs);
     } catch (error) {
         console.error("Error listing jobs:", error);
@@ -79,14 +83,12 @@ const getJobById = async (req, res) => {
 const updateJob = async (req, res) => {
     try {
         const updates = req.body || {};
-        if (updates.company !== undefined && !updates.company.trim()) {
-            return res.status(400).json({ message: "Company cannot be empty." });
-        }
         if (updates.title !== undefined && !updates.title.trim()) {
             return res.status(400).json({ message: "Title cannot be empty." });
         }
-        if (updates.company) updates.company = updates.company.trim();
+        if (updates.company !== undefined) updates.company = updates.company.trim();
         if (updates.title) updates.title = updates.title.trim();
+        if (updates.order !== undefined) updates.order = Number(updates.order);
 
         const job = await Job.findOneAndUpdate(
             { _id: req.params.id, owner: req.user._id },

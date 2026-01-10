@@ -1,8 +1,8 @@
-import {User} from '../models/user.model.js';
+import { User } from '../models/user.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-const registerUser = async (req, res) => {
+async function registerUser(req, res) {
     try {
         const { username, email, password } = req.body;
 
@@ -38,8 +38,9 @@ const registerUser = async (req, res) => {
         console.error('Error registering user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const loginUser = async (req, res) => {
+}
+
+async function loginUser(req, res) {
     // Login logic here
     try {
         const { email, password } = req.body;
@@ -65,7 +66,8 @@ const loginUser = async (req, res) => {
             httpOnly: true,
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/'
         });
         res.status(200).json({ message: 'Login successful.' });
         
@@ -73,14 +75,16 @@ const loginUser = async (req, res) => {
         console.error('Error logging in user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const logoutUser = async (req, res) => {
+}
+
+async function logoutUser(req, res) {
     // Logout logic here
     try {
         res.clearCookie('token', {
             httpOnly: true,
             sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production'
+            secure: process.env.NODE_ENV === 'production',
+            path: '/'
         });
         res.status(200).json({ message: 'Logout successful.' });
         
@@ -88,8 +92,9 @@ const logoutUser = async (req, res) => {
         console.error('Error logging out user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const updateUserProfile = async (req, res) => {
+}
+
+async function updateUserProfile(req, res) {
     // Profile update logic
     try {
         const { newUsername, newEmail } = req.body;
@@ -136,8 +141,9 @@ const updateUserProfile = async (req, res) => {
         console.error('Error updating profile:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const getCurrentUser = async (req, res) => {
+}
+
+async function getCurrentUser(req, res) {
     try {
         const user = await User.findById(req.user._id).select('username email role');
         if (!user) {
@@ -148,9 +154,6 @@ const getCurrentUser = async (req, res) => {
         console.error('Error loading current user:', error);
         return res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-export { registerUser };
-export { loginUser };
-export { logoutUser };
-export { updateUserProfile };
-export { getCurrentUser };
+}
+
+export { registerUser, loginUser, logoutUser, updateUserProfile, getCurrentUser };

@@ -27,7 +27,45 @@ const userSchema=new Schema({
         type: String,
         enum: ["user", "admin"],
         default: "user"
-    }
+    },
+    taskCategories: [
+        {
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    taskLabels: [
+        {
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    jobCategories: [
+        {
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    jobLabels: [
+        {
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    taskColumns: [
+        {
+            key: { type: String, trim: true, maxlength: 40 },
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    jobColumns: [
+        {
+            key: { type: String, trim: true, maxlength: 40 },
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ]
 }, {
     timestamps:true
 });

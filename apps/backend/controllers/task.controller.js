@@ -2,7 +2,7 @@ import { Task } from "../models/task.model.js";
 
 const createTask = async (req, res) => {
     try {
-        const { title, description, status, category, dueDate } = req.body;
+        const { title, description, status, category, labels, dueDate, order } = req.body;
         if (!title || !title.trim()) {
             return res.status(400).json({ message: "Title is required." });
         }
@@ -11,7 +11,9 @@ const createTask = async (req, res) => {
             title: title.trim(),
             description: description ? description.trim() : undefined,
             status,
+            order: Number.isFinite(order) ? order : 0,
             category,
+            labels,
             dueDate,
             owner: req.user._id
         });
@@ -26,7 +28,7 @@ const createTask = async (req, res) => {
 const listTasks = async (req, res) => {
     try {
         // Only return tasks owned by this user.
-        const tasks = await Task.find({ owner: req.user._id }).sort({ createdAt: -1 });
+        const tasks = await Task.find({ owner: req.user._id }).sort({ order: 1, createdAt: -1 });
         return res.status(200).json(tasks);
     } catch (error) {
         console.error("Error listing tasks:", error);
@@ -49,7 +51,7 @@ const getTaskById = async (req, res) => {
 
 const updateTask = async (req, res) => {
     try {
-        const { title, description, status, category, dueDate } = req.body;
+        const { title, description, status, category, labels, dueDate, order } = req.body;
         const updates = {};
         if (title !== undefined) {
             if (!title.trim()) {
@@ -63,8 +65,14 @@ const updateTask = async (req, res) => {
         if (status !== undefined) {
             updates.status = status;
         }
+        if (order !== undefined) {
+            updates.order = Number(order);
+        }
         if (category !== undefined) {
             updates.category = category;
+        }
+        if (labels !== undefined) {
+            updates.labels = labels;
         }
         if (dueDate !== undefined) {
             updates.dueDate = dueDate;

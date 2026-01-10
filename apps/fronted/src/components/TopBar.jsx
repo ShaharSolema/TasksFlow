@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const TopBar = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [open, setOpen] = useState(false);
+    const menuRef = useRef(null);
 
     const initials = user?.username
         ? user.username.trim().slice(0, 2).toUpperCase()
@@ -17,28 +19,52 @@ const TopBar = () => {
         navigate("/login");
     };
 
+    useEffect(() => {
+        const handleClick = (event) => {
+            if (!menuRef.current) return;
+            if (!menuRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+        const handleScroll = () => setOpen(false);
+        if (open) {
+            document.addEventListener("mousedown", handleClick);
+            window.addEventListener("scroll", handleScroll, { passive: true });
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClick);
+            window.removeEventListener("scroll", handleScroll);
+        };
+    }, [open]);
+
+    const pageTitles = {
+        "/tasks": "Tasks",
+        "/jobs": "Jobs",
+        "/jobs/calendar": "Job Calendar",
+        "/charts": "Charts",
+        "/admin": "Admin",
+        "/profile": "Profile"
+    };
+    const pageTitle = pageTitles[location.pathname] || "Workspace";
+    
+
     return (
-        <header className="site-header">
-            <div className="site-inner">
-                <Link to="/" className="brand-link">
-                    TaskFlow
-                </Link>
-                <nav className="nav-links">
-                    <Link to="/tasks">Task Management</Link>
-                    <Link to="/jobs">Job Management</Link>
-                    <Link to="/jobs/calendar">Job Calendar</Link>
-                    {user?.role === "admin" && <Link to="/charts">Charts</Link>}
-                </nav>
+        <header className="navbar">
+            <div>
+                <div className="page-title">{pageTitle}</div>
+                <div className="page-subtitle">Manage your work in one place</div>
+            </div>
+            <div className="navbar-right">
+                
                 {!user ? (
-                    <Link to="/login" className="button icon-button">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" className="icon">
+                    <Link to="/login" className="nav-btn">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
                             <circle cx="12" cy="8" r="4"></circle>
                             <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"></path>
                         </svg>
-                        Login
                     </Link>
                 ) : (
-                    <div className="user-menu">
+                    <div className="user-menu" ref={menuRef}>
                         <button
                             type="button"
                             className="avatar-button"

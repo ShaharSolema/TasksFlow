@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Badge, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { API_BASE } from "../lib/api.js";
 
 const buildMonth = (date) => {
@@ -109,24 +110,24 @@ const JobCalendar = () => {
 
     return (
         <div className="page">
-            <div className="hero">
+            <Group justify="space-between" mb="md">
                 <div>
-                    <h1>Job Calendar</h1>
-                    <p className="muted">Interviews, follow-ups, and reminders.</p>
+                    <Title order={2}>Job Calendar</Title>
+                    <Text c="dimmed">Interviews, follow-ups, and reminders.</Text>
                 </div>
-                <div className="row">
-                    <button type="button" className="button secondary" onClick={goPrev}>Prev</button>
-                    <span className="badge">{monthLabel}</span>
-                    <button type="button" className="button secondary" onClick={goNext}>Next</button>
-                </div>
-            </div>
+                <Group>
+                    <Button variant="light" onClick={goPrev}>Prev</Button>
+                    <Badge size="lg" radius="xl">{monthLabel}</Badge>
+                    <Button variant="light" onClick={goNext}>Next</Button>
+                </Group>
+            </Group>
 
-            {error && <p className="error">{error}</p>}
+            {error && <Text c="red">{error}</Text>}
             {loading ? (
-                <p className="muted">Loading...</p>
+                <Text c="dimmed">Loading...</Text>
             ) : (
                 <div className="calendar-grid">
-                    <div className="calendar-card">
+                    <Paper className="calendar-card" radius="lg" shadow="sm">
                         <div className="calendar-week">
                             {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map((day) => (
                                 <span key={day} className="calendar-day-label">{day}</span>
@@ -154,27 +155,27 @@ const JobCalendar = () => {
                                 );
                             })}
                         </div>
-                    </div>
-                    <div className="calendar-card">
-                        <h2>Upcoming</h2>
+                    </Paper>
+                    <Paper className="calendar-card" radius="lg" shadow="sm">
+                        <Title order={4}>Upcoming</Title>
                         <div className="calendar-list">
                             {Object.keys(groupedEvents)
                                 .sort()
                                 .map((dateKey) => (
                                     <div key={dateKey} className="calendar-group">
-                                        <h3>{new Date(dateKey).toLocaleDateString()}</h3>
-                                        <ul className="task-list">
+                                        <Text fw={600}>{new Date(dateKey).toLocaleDateString()}</Text>
+                                        <Stack gap={4} mt="xs">
                                             {groupedEvents[dateKey].map((item, idx) => (
-                                                <li key={`${dateKey}-${idx}`} className="muted">
+                                                <Text key={`${dateKey}-${idx}`} size="sm" c="dimmed">
                                                     {item.title}{item.note ? ` - ${item.note}` : ""}
-                                                </li>
+                                                </Text>
                                             ))}
-                                        </ul>
+                                        </Stack>
                                     </div>
                                 ))}
-                            {events.length === 0 && <p className="muted">No events yet.</p>}
+                            {events.length === 0 && <Text c="dimmed">No events yet.</Text>}
                         </div>
-                    </div>
+                    </Paper>
                 </div>
             )}
         </div>

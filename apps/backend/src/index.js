@@ -11,8 +11,8 @@ dotenv.config({
     path: path.resolve(__dirname, '../.env')
 });
 
-const startServer = async () => {
-    try{
+async function startServer() {
+    try {
         await connectDB();
 
         app.on("error", (err) => {
@@ -20,13 +20,14 @@ const startServer = async () => {
             throw err;
         });
 
-        app.listen(process.env.PORT||8000,()=>{
-            console.log(`\n Server is running on port ${process.env.PORT}`);
+        const port = process.env.PORT || 8000;
+        app.listen(port, () => {
+            console.log(`\n Server is running on port ${port}`);
         });
-    }
-    catch(error){
+    } catch (error) {
         console.error("Failed to start server:", error);
         process.exit(1);
-    }   
-};
+    }
+}
+
 startServer();

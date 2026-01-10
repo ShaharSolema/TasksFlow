@@ -13,7 +13,6 @@ const jobSchema = new Schema(
     {
         company: {
             type: String,
-            required: true,
             trim: true,
             maxlength: 120
         },
@@ -25,8 +24,13 @@ const jobSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["saved", "applied", "interview", "offer", "rejected"],
-            default: "saved"
+            trim: true,
+            default: "saved",
+            maxlength: 40
+        },
+        order: {
+            type: Number,
+            default: 0
         },
         jobType: {
             type: String,
@@ -38,6 +42,13 @@ const jobSchema = new Schema(
             trim: true,
             maxlength: 80
         },
+        labels: [
+            {
+                type: String,
+                trim: true,
+                maxlength: 40
+            }
+        ],
         priority: {
             type: String,
             enum: ["low", "medium", "high"],

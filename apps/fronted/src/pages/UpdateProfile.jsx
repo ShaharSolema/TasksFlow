@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const UpdateProfile = () => {
@@ -33,32 +34,29 @@ const UpdateProfile = () => {
 
     return (
         <div className="page">
-            <form onSubmit={handleSubmit} className="card auth-card">
-                <h2>Update Profile</h2>
-                <label>
-                    Username
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        className="input"
-                    />
-                </label>
-                <label>
-                    Email
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        className="input"
-                    />
-                </label>
-                {message && <p className="muted">{message}</p>}
-                {error && <p className="error">{error}</p>}
-                <button type="submit" className="button" disabled={loading}>
-                    {loading ? "Saving..." : "Save"}
-                </button>
-            </form>
+            <Paper className="auth-card" radius="lg" shadow="md" p="lg">
+                <form onSubmit={handleSubmit}>
+                    <Stack>
+                        <Title order={2}>Update Profile</Title>
+                        <TextInput
+                            label="Username"
+                            value={username}
+                            onChange={(event) => setUsername(event.target.value)}
+                        />
+                        <TextInput
+                            label="Email"
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                        />
+                        {message && <Text c="dimmed">{message}</Text>}
+                        {error && <Text c="red">{error}</Text>}
+                        <Button type="submit" loading={loading}>
+                            {loading ? "Saving..." : "Save"}
+                        </Button>
+                    </Stack>
+                </form>
+            </Paper>
         </div>
     );
 };

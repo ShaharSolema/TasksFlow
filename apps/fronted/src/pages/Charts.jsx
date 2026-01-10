@@ -17,10 +17,18 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { API_BASE } from "../lib/api.js";
 
 const STATUS_COLORS = {
-    "todo": "#d9c9a5",
-    "in-progress": "#d6b56d",
-    "done": "#7eb18b"
+    "todo": "#7ac4b8",
+    "in-progress": "#d4b06a",
+    "done": "#6db897"
 };
+
+const JOB_STATUS_COLORS = [
+    "#6db897",
+    "#a89068",
+    "#b87a68",
+    "#4a9e92",
+    "#d4a090"
+];
 
 const Charts = () => {
     const { user } = useAuth();
@@ -70,6 +78,33 @@ const Charts = () => {
         [data]
     );
 
+    const jobsPerDay = useMemo(
+        () =>
+            (data?.jobsPerDay || []).map((item) => ({
+                date: item._id,
+                count: item.count
+            })),
+        [data]
+    );
+
+    const jobStatusDistribution = useMemo(
+        () =>
+            (data?.jobStatusDistribution || []).map((item) => ({
+                name: item._id,
+                value: item.count
+            })),
+        [data]
+    );
+
+    const jobTypeDistribution = useMemo(
+        () =>
+            (data?.jobTypeDistribution || []).map((item) => ({
+                name: item._id,
+                value: item.count
+            })),
+        [data]
+    );
+
     if (!user || user.role !== "admin") {
         return (
             <div className="page">
@@ -99,6 +134,7 @@ const Charts = () => {
                         <div className="row">
                             <span className="pill">Users: {data.kpis.totalUsers}</span>
                             <span className="pill">Tasks: {data.kpis.totalTasks}</span>
+                            <span className="pill">Jobs: {data.kpis.totalJobs}</span>
                             <span className="pill">Completion: {data.kpis.completionRate}%</span>
                         </div>
                     </div>
@@ -107,11 +143,25 @@ const Charts = () => {
                         <div className="chart-shell">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={tasksPerDay}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e6dfd3" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
                                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                                     <YAxis allowDecimals={false} />
                                     <Tooltip />
-                                    <Line type="monotone" dataKey="count" stroke="#2f6f5a" strokeWidth={3} dot={false} />
+                                    <Line type="monotone" dataKey="count" stroke="#34d399" strokeWidth={3} dot={false} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="card chart-card">
+                        <h2>Jobs per day</h2>
+                        <div className="chart-shell">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={jobsPerDay}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                    <YAxis allowDecimals={false} />
+                                    <Tooltip />
+                                    <Line type="monotone" dataKey="count" stroke="#d4a574" strokeWidth={3} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -137,11 +187,54 @@ const Charts = () => {
                             <div className="chart-shell small">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topUsers || []}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#e6dfd3" />
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
                                         <XAxis dataKey="username" tick={{ fontSize: 12 }} />
                                         <YAxis allowDecimals={false} />
                                         <Tooltip />
-                                        <Bar dataKey="count" fill="#2f6f5a" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="count" fill="#34d399" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div>
+                            <h2>Job status</h2>
+                            <div className="chart-shell small">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={jobStatusDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                                            {jobStatusDistribution.map((entry, index) => (
+                                                <Cell key={entry.name} fill={JOB_STATUS_COLORS[index % JOB_STATUS_COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div>
+                            <h2>Job types</h2>
+                            <div className="chart-shell small">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={jobTypeDistribution}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
+                                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                        <YAxis allowDecimals={false} />
+                                        <Tooltip />
+                                        <Bar dataKey="value" fill="#d4a574" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div>
+                            <h2>Top companies</h2>
+                            <div className="chart-shell small">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={data.topCompanies || []}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
+                                        <XAxis dataKey="company" tick={{ fontSize: 12 }} />
+                                        <YAxis allowDecimals={false} />
+                                        <Tooltip />
+                                        <Bar dataKey="count" fill="#7ac4b8" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>

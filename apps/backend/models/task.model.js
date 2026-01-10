@@ -16,14 +16,26 @@ const taskSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["todo", "in-progress", "done"],
-            default: "todo"
+            trim: true,
+            default: "todo",
+            maxlength: 40
+        },
+        order: {
+            type: Number,
+            default: 0
         },
         category: {
             type: String,
-            enum: ["work", "personal", "study", "health", "other"],
-            default: "other"
+            trim: true,
+            maxlength: 40
         },
+        labels: [
+            {
+                type: String,
+                trim: true,
+                maxlength: 40
+            }
+        ],
         dueDate: {
             type: Date
         },
