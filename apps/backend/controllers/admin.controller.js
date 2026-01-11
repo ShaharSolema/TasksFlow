@@ -1,0 +1,155 @@
+import { Task } from "../models/task.model.js";
+import { Job } from "../models/job.model.js";
+import { User } from "../models/user.model.js";
+
+// Aggregate analytics for the admin dashboard.
+const getAnalytics = async (req, res) => {
+    try {
+        // Tasks created per day.
+        const tasksPerDay = await Task.aggregate([
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Task status distribution.
+        const statusDistribution = await Task.aggregate([
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Top users by number of tasks.
+        const topUsers = await Task.aggregate([
+            { $group: { _id: "$owner", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "user"
+                }
+            },
+            { $unwind: "$user" },
+            {
+                $project: {
+                    _id: 0,
+                    userId: "$user._id",
+                    username: "$user.username",
+                    count: 1
+                }
+            }
+        ]);
+
+        const jobsPerDay = await Job.aggregate([
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        const jobStatusDistribution = await Job.aggregate([
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const jobTypeDistribution = await Job.aggregate([
+            {
+                $group: {
+                    _id: "$jobType",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const topCompanies = await Job.aggregate([
+            { $group: { _id: "$company", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 },
+            {
+                $project: {
+                    _id: 0,
+                    company: "$_id",
+                    count: 1
+                }
+            }
+        ]);
+
+        const totalUsers = await User.countDocuments();
+        const totalTasks = await Task.countDocuments();
+        const totalJobs = await Job.countDocuments();
+        const completedTasks = await Task.countDocuments({ status: "done" });
+        const completionRate = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+        return res.status(200).json({
+            kpis: { totalUsers, totalTasks, totalJobs, completionRate },
+            tasksPerDay,
+            statusDistribution,
+            topUsers,
+            jobsPerDay,
+            jobStatusDistribution,
+            jobTypeDistribution,
+            topCompanies
+        });
+    } catch (error) {
+        console.error("Error loading analytics:", error);
+        return res.status(500).json({ message: "Server error. Please try again later." });
+    }
+};
+
+// List basic user info for admin view.
+const listUsers = async (req, res) => {
+    try {
+        const users = await User.find()
+            .select("username email role createdAt")
+            .sort({ createdAt: -1 });
+        return res.status(200).json({ users });
+    } catch (error) {
+        console.error("Error loading users:", error);
+        return res.status(500).json({ message: "Server error. Please try again later." });
+    }
+};
+
+// Update a user's role (admin/user).
+const updateUserRole = async (req, res) => {
+    try {
+        const { role } = req.body;
+        if (!role || !["user", "admin"].includes(role)) {
+            return res.status(400).json({ message: "Invalid role." });
+        }
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { role },
+            { new: true }
+        ).select("username email role");
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+        return res.status(200).json({ user });
+    } catch (error) {
+        console.error("Error updating role:", error);
+        return res.status(500).json({ message: "Server error. Please try again later." });
+    }
+};
+
+export { getAnalytics, listUsers, updateUserRole };

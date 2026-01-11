@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
+// Task schema for a user's personal tasks.
 const taskSchema = new Schema(
     {
         title: {
@@ -16,9 +17,21 @@ const taskSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["todo", "in-progress", "done"],
-            default: "todo"
+            trim: true,
+            default: "todo",
+            maxlength: 40
         },
+        order: {
+            type: Number,
+            default: 0
+        },
+        labels: [
+            {
+                type: String,
+                trim: true,
+                maxlength: 40
+            }
+        ],
         dueDate: {
             type: Date
         },

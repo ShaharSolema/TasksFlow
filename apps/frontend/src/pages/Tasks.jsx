@@ -51,6 +51,20 @@ const Tasks = () => {
     const [quickAddTitle, setQuickAddTitle] = useState("");
     const [quickAddLoading, setQuickAddLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isColumnsModalOpen, setIsColumnsModalOpen] = useState(false);
+
+    // Small helper so every request uses the same error handling.
+    const fetchJson = async (path, options = {}) => {
+        const response = await fetch(`${API_BASE}${path}`, {
+            credentials: "include",
+            ...options
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.message || "Request failed.");
+        }
+        return data;
+    };
 
     const formatTimeLeft = (dateString) => {
         if (!dateString) return "No due date";
@@ -71,15 +85,8 @@ const Tasks = () => {
     const loadTasks = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/tasks`, {
-                credentials: "include"
-            });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to load tasks.");
-            }
-            const data = await response.json();
-            setTasks(data || []);
+            const data = await fetchJson("/api/tasks");
+            setTasks(Array.isArray(data) ? data : []);
         } catch (err) {
             setError(err.message || "Failed to load tasks.");
         } finally {
@@ -87,32 +94,18 @@ const Tasks = () => {
         }
     };
 
-    const loadTags = async () => {
-        try {
-            const response = await fetch(`${API_BASE}/api/tags/task`, {
-                credentials: "include"
-            });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to load categories.");
+        const loadTags = async () => {
+            try {
+                const data = await fetchJson("/api/tags/task");
+                setTaskLabels(data.labels || []);
+            } catch (err) {
+                setError(err.message || "Failed to load labels.");
             }
-            const data = await response.json();
-            setTaskLabels(data.labels || []);
-        } catch (err) {
-            setError(err.message || "Failed to load categories.");
-        }
-    };
+        };
 
     const loadColumns = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/columns/task`, {
-                credentials: "include"
-            });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to load columns.");
-            }
-            const data = await response.json();
+            const data = await fetchJson("/api/columns/task");
             setTaskColumns(data.columns || []);
             if (data.columns && data.columns.length > 0 && !status) {
                 setStatus(data.columns[0].key);
@@ -145,10 +138,9 @@ const Tasks = () => {
         event.preventDefault();
         setError("");
         try {
-            const response = await fetch(`${API_BASE}/api/tasks`, {
+            await fetchJson("/api/tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({
                     title,
                     description: description.trim() || undefined,
@@ -157,10 +149,6 @@ const Tasks = () => {
                     dueDate: dueDate || undefined
                 })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to create task.");
-            }
             setTitle("");
             setDescription("");
             setStatus(taskColumns[0]?.key || "");
@@ -177,19 +165,14 @@ const Tasks = () => {
         if (!titleValue) return;
         setQuickAddLoading(true);
         try {
-            const response = await fetch(`${API_BASE}/api/tasks`, {
+            await fetchJson("/api/tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({
                     title: titleValue,
                     status: statusKey
                 })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to create task.");
-            }
             setQuickAddTitle("");
             setQuickAddStatus(null);
             await loadTasks();
@@ -229,10 +212,9 @@ const Tasks = () => {
         if (!editingId) return;
         setError("");
         try {
-            const response = await fetch(`${API_BASE}/api/tasks/${editingId}`, {
+            await fetchJson(`/api/tasks/${editingId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({
                     title: editTitle,
                     description: editDescription.trim() || "",
@@ -241,10 +223,6 @@ const Tasks = () => {
                     dueDate: editDueDate || null
                 })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to update task.");
-            }
             await loadTasks();
             cancelEdit();
         } catch (err) {
@@ -255,14 +233,9 @@ const Tasks = () => {
     const handleDelete = async (taskId) => {
         setError("");
         try {
-            const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
-                method: "DELETE",
-                credentials: "include"
+            await fetchJson(`/api/tasks/${taskId}`, {
+                method: "DELETE"
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to delete task.");
-            }
             await loadTasks();
         } catch (err) {
             setError(err.message || "Failed to delete task.");
@@ -291,6 +264,7 @@ const Tasks = () => {
         return base;
     }, [filteredTasks, taskColumns]);
 
+    // Reorder tasks locally first, then sync to the API.
     const onDragEnd = async (result) => {
         if (!result.destination) return;
         const { destination, draggableId, source } = result;
@@ -385,17 +359,11 @@ const Tasks = () => {
     const addLabel = async () => {
         if (!newLabelName.trim()) return;
         try {
-            const response = await fetch(`${API_BASE}/api/tags/task/labels`, {
+            const data = await fetchJson("/api/tags/task/labels", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({ name: newLabelName, color: newLabelColor })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to add label.");
-            }
-            const data = await response.json();
             setTaskLabels(data.labels || []);
             setNewLabelName("");
         } catch (err) {
@@ -406,17 +374,11 @@ const Tasks = () => {
     const addColumn = async () => {
         if (!newColumnName.trim()) return;
         try {
-            const response = await fetch(`${API_BASE}/api/columns/task`, {
+            const data = await fetchJson("/api/columns/task", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({ name: newColumnName, color: newColumnColor })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to add column.");
-            }
-            const data = await response.json();
             setTaskColumns(data.columns || []);
             setNewColumnName("");
         } catch (err) {
@@ -426,34 +388,46 @@ const Tasks = () => {
 
     const updateColumn = async (columnKey, updates) => {
         try {
-            const response = await fetch(`${API_BASE}/api/columns/task/${columnKey}`, {
+            const data = await fetchJson(`/api/columns/task/${columnKey}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(updates)
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to update column.");
-            }
-            const data = await response.json();
             setTaskColumns(data.columns || []);
         } catch (err) {
             setError(err.message || "Failed to update column.");
         }
     };
 
+    const reorderColumns = async (nextColumns) => {
+        try {
+            const data = await fetchJson("/api/columns/task", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ order: nextColumns.map((col) => col.key) })
+            });
+            setTaskColumns(data.columns || []);
+        } catch (err) {
+            setError(err.message || "Failed to reorder columns.");
+        }
+    };
+
+    const moveColumn = (index, direction) => {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= taskColumns.length) return;
+        const next = [...taskColumns];
+        const temp = next[index];
+        next[index] = next[nextIndex];
+        next[nextIndex] = temp;
+        setTaskColumns(next);
+        reorderColumns(next);
+    };
+
     const deleteColumn = async (columnKey) => {
         try {
-            const response = await fetch(`${API_BASE}/api/columns/task/${columnKey}`, {
-                method: "DELETE",
-                credentials: "include"
+            const data = await fetchJson(`/api/columns/task/${columnKey}`, {
+                method: "DELETE"
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to delete column.");
-            }
-            const data = await response.json();
             setTaskColumns(data.columns || []);
         } catch (err) {
             setError(err.message || "Failed to delete column.");
@@ -479,7 +453,12 @@ const Tasks = () => {
                     <Title order={2}>Your Tasks</Title>
                     <Text c="dimmed">Organize your day with clean focus.</Text>
                 </div>
-                <Badge size="lg" radius="xl">{filteredTasks.length} tasks</Badge>
+                <Group>
+                    <Badge size="lg" radius="xl">{filteredTasks.length} tasks</Badge>
+                    <Button variant="light" onClick={() => setIsColumnsModalOpen(true)}>
+                        Edit columns
+                    </Button>
+                </Group>
             </Group>
 
             <Group mb="lg" wrap="wrap">
@@ -488,6 +467,7 @@ const Tasks = () => {
                     value={statusFilter}
                     onChange={(value) => setStatusFilter(value || "all")}
                     placeholder="All status"
+                    withinPortal
                 />
                 <TextInput
                     placeholder="Search tasks"
@@ -503,214 +483,161 @@ const Tasks = () => {
                 Tip: click any task card to open the full editor.
             </Text>
 
-            <div className="task-grid">
-                <div className="task-board">
-                    <Paper className="glass-panel" radius="lg" p="lg" shadow="sm">
-                        <Title order={4}>Task labels</Title>
-                        <Stack mt="sm">
-                            <Group wrap="wrap">
-                                <TextInput
-                                    placeholder="New label"
-                                    value={newLabelName}
-                                    onChange={(event) => setNewLabelName(event.currentTarget.value)}
-                                />
-                                <ColorInput
-                                    value={newLabelColor}
-                                    onChange={setNewLabelColor}
-                                />
-                                <Button variant="light" onClick={addLabel}>
-                                    Add label
-                                </Button>
-                            </Group>
-                        </Stack>
-                    </Paper>
-                    <Paper className="glass-panel" radius="lg" p="lg" shadow="sm" mt="md">
-                        <Title order={4}>Task columns</Title>
-                        <Stack mt="sm">
-                            <Group wrap="wrap">
-                                <TextInput
-                                    placeholder="New column"
-                                    value={newColumnName}
-                                    onChange={(event) => setNewColumnName(event.currentTarget.value)}
-                                />
-                                <ColorInput
-                                    value={newColumnColor}
-                                    onChange={setNewColumnColor}
-                                />
-                                <Button variant="light" onClick={addColumn}>
-                                    Add column
-                                </Button>
-                            </Group>
-                            <Stack gap="xs">
-                                {taskColumns.map((column) => (
-                                    <Group key={column.key} wrap="wrap">
-                                        <TextInput
-                                            value={column.name}
-                                            onChange={(event) =>
-                                                updateColumn(column.key, { name: event.currentTarget.value })
-                                            }
-                                        />
-                                        <ColorInput
-                                            value={column.color || "#e9dfcf"}
-                                            onChange={(value) => updateColumn(column.key, { color: value })}
-                                        />
-                                        <Button color="red" variant="light" onClick={() => deleteColumn(column.key)}>
-                                            Delete
-                                        </Button>
-                                    </Group>
-                                ))}
-                            </Stack>
-                        </Stack>
-                    </Paper>
-                </div>
+            <DragDropContext onDragEnd={onDragEnd}>
+            <div className="task-grid task-grid--wide">
                 <div className="task-board">
                     {error && <Text c="red">{error}</Text>}
                     {loading ? (
                         <Text c="dimmed">Loading...</Text>
                     ) : (
-                        <DragDropContext onDragEnd={onDragEnd}>
-                            <div className="kanban-scroll">
-                                <div className="kanban">
-                                    {taskColumns.map((column) => (
-                                        <Droppable key={column.key} droppableId={column.key}>
-                                            {(provided) => (
-                                                <div className="kanban-column" ref={provided.innerRef} {...provided.droppableProps}>
-                                                    <Group justify="space-between" mb="sm">
-                                                        <Group gap="xs">
-                                                            {editingColumnKey === column.key ? (
-                                                                <TextInput
-                                                                    value={column.name}
-                                                                    onChange={(event) =>
-                                                                        updateColumn(column.key, { name: event.currentTarget.value })
-                                                                    }
-                                                                    onBlur={() => setEditingColumnKey(null)}
-                                                                />
-                                                            ) : (
-                                                                <Text
-                                                                    fw={600}
-                                                                    onClick={() => setEditingColumnKey(column.key)}
-                                                                    style={{ color: column.color || "#c7d6cd" }}
-                                                                >
-                                                                    {column.name}
-                                                                </Text>
-                                                            )}
-                                                            <Button
-                                                                size="xs"
-                                                                variant="light"
-                                                                onClick={() => setQuickAddStatus(column.key)}
-                                                            >
-                                                                +
-                                                            </Button>
-                                                        </Group>
-                                                        <Badge variant="light">{groupedTasks[column.key]?.length || 0}</Badge>
-                                                    </Group>
-                                                    {quickAddStatus === column.key && (
-                                                        <Group mb="sm" wrap="wrap">
-                                                            <TextInput
-                                                                placeholder="Quick task title"
-                                                                value={quickAddTitle}
-                                                                onChange={(event) => setQuickAddTitle(event.currentTarget.value)}
-                                                                required
-                                                            />
-                                                            <Button
-                                                                size="xs"
-                                                                onClick={() => handleQuickAdd(column.key)}
-                                                                loading={quickAddLoading}
-                                                            >
-                                                                Add
-                                                            </Button>
-                                                        </Group>
-                                                    )}
+                        <div className="kanban-scroll">
+                            <div className="kanban">
+                                {taskColumns.map((column) => (
+                                    <div className="kanban-column" key={column.key}>
+                                        <Group justify="space-between" mb="sm">
+                                            <Group gap="xs">
+                                                {editingColumnKey === column.key ? (
+                                                    <TextInput
+                                                        value={column.name}
+                                                        onChange={(event) =>
+                                                            updateColumn(column.key, { name: event.currentTarget.value })
+                                                        }
+                                                        onBlur={() => setEditingColumnKey(null)}
+                                                    />
+                                                ) : (
+                                                    <Text
+                                                        fw={600}
+                                                        onClick={() => setEditingColumnKey(column.key)}
+                                                        style={{ color: column.color || "#c7d6cd" }}
+                                                    >
+                                                        {column.name}
+                                                    </Text>
+                                                )}
+                                                <Button
+                                                    size="xs"
+                                                    variant="light"
+                                                    onClick={() => setQuickAddStatus(column.key)}
+                                                >
+                                                    +
+                                                </Button>
+                                            </Group>
+                                            <Badge variant="light">{groupedTasks[column.key]?.length || 0}</Badge>
+                                        </Group>
+                                        {quickAddStatus === column.key && (
+                                            <Group mb="sm" wrap="wrap">
+                                                <TextInput
+                                                    placeholder="Quick task title"
+                                                    value={quickAddTitle}
+                                                    onChange={(event) => setQuickAddTitle(event.currentTarget.value)}
+                                                    required
+                                                />
+                                                <Button
+                                                    size="xs"
+                                                    onClick={() => handleQuickAdd(column.key)}
+                                                    loading={quickAddLoading}
+                                                >
+                                                    Add
+                                                </Button>
+                                            </Group>
+                                        )}
+                                        <Droppable droppableId={column.key}>
+                                            {(taskProvided) => (
+                                                <div
+                                                    className="kanban-dropzone"
+                                                    ref={taskProvided.innerRef}
+                                                    {...taskProvided.droppableProps}
+                                                >
                                                     <Stack className="kanban-list" gap="sm">
                                                         {(groupedTasks[column.key] || []).map((task, index) => (
                                                             <Draggable key={task._id} draggableId={task._id} index={index}>
-                                                {(dragProvided, snapshot) => {
-                                                    const card = (
-                                                        <Paper
-                                                            ref={dragProvided.innerRef}
-                                                            {...dragProvided.draggableProps}
-                                                            {...dragProvided.dragHandleProps}
-                                                            shadow="sm"
-                                                            radius="md"
-                                                            p="md"
-                                                            onClick={() => openTaskModal(task)}
-                                                            style={{
-                                                                ...dragProvided.draggableProps.style,
-                                                                zIndex: snapshot.isDragging ? 9999 : "auto",
-                                                                cursor: "pointer"
-                                                            }}
-                                                        >
-                                                            <Stack gap={6}>
-                                                                <Group justify="space-between" align="flex-start">
-                                                                    <div>
-                                                                        <Text fw={600}>{task.title}</Text>
-                                                                        {task.description && <Text size="sm">{task.description}</Text>}
-                                                                    </div>
-                                                                    {columnMeta[task.status] && (
-                                                                        <Badge
-                                                                            variant="light"
+                                                                {(dragProvided, snapshot) => {
+                                                                    const card = (
+                                                                        <Paper
+                                                                            className={snapshot.isDragging ? "kanban-card is-dragging" : "kanban-card"}
+                                                                            ref={dragProvided.innerRef}
+                                                                            {...dragProvided.draggableProps}
+                                                                            {...dragProvided.dragHandleProps}
+                                                                            shadow="sm"
+                                                                            radius="md"
+                                                                            p="md"
+                                                                            onClick={() => openTaskModal(task)}
                                                                             style={{
-                                                                                color: columnMeta[task.status].color,
-                                                                                border: `1px solid ${columnMeta[task.status].color}`
+                                                                                ...dragProvided.draggableProps.style,
+                                                                                zIndex: snapshot.isDragging ? 9999 : "auto",
+                                                                                cursor: "pointer"
                                                                             }}
                                                                         >
-                                                                            {columnMeta[task.status].name}
-                                                                        </Badge>
-                                                                    )}
-                                                                </Group>
-                                                                {Array.isArray(task.labels) && task.labels.length > 0 && (
-                                                                    <Group gap={6} wrap="wrap">
-                                                                        {task.labels.map((label) => (
-                                                                            <Badge
-                                                                                key={label}
-                                                                                variant="light"
-                                                                                style={{
-                                                                                    color: labelColors[label] || "#c7d6cd",
-                                                                                    border: `1px solid ${labelColors[label] || "#c7d6cd"}`
-                                                                                }}
-                                                                            >
-                                                                                {label}
-                                                                            </Badge>
-                                                                        ))}
-                                                                    </Group>
-                                                                )}
-                                                                <Text size="sm" c="dimmed">
-                                                                    Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "None"}
-                                                                </Text>
-                                                                <Text size="sm" c="dimmed">
-                                                                    Time left: {formatTimeLeft(task.dueDate)}
-                                                                </Text>
-                                                                <Group>
-                                                                    <Button
-                                                                        size="xs"
-                                                                        color="red"
-                                                                        onClick={(event) => {
-                                                                            event.stopPropagation();
-                                                                            handleDelete(task._id);
-                                                                        }}
-                                                                    >
-                                                                        Delete
-                                                                    </Button>
-                                                                </Group>
-                                                            </Stack>
-                                                        </Paper>
-                                                    );
-                                                    if (snapshot.isDragging) {
-                                                        return createPortal(card, document.body);
-                                                    }
-                                                    return card;
-                                                }}
-                                            </Draggable>
+                                                                            <Stack gap={6}>
+                                                                                <Group justify="space-between" align="flex-start">
+                                                                                    <div>
+                                                                                        <Text fw={600}>{task.title}</Text>
+                                                                                        {task.description && <Text size="sm">{task.description}</Text>}
+                                                                                    </div>
+                                                                                    {columnMeta[task.status] && (
+                                                                                        <Badge
+                                                                                            variant="light"
+                                                                                            style={{
+                                                                                                color: columnMeta[task.status].color,
+                                                                                                border: `1px solid ${columnMeta[task.status].color}`
+                                                                                            }}
+                                                                                        >
+                                                                                            {columnMeta[task.status].name}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </Group>
+                                                                                {Array.isArray(task.labels) && task.labels.length > 0 && (
+                                                                                    <Group gap={6} wrap="wrap">
+                                                                                        {task.labels.map((label) => (
+                                                                                            <Badge
+                                                                                                key={label}
+                                                                                                variant="light"
+                                                                                                style={{
+                                                                                                    color: labelColors[label] || "#c7d6cd",
+                                                                                                    border: `1px solid ${labelColors[label] || "#c7d6cd"}`
+                                                                                                }}
+                                                                                            >
+                                                                                                {label}
+                                                                                            </Badge>
+                                                                                        ))}
+                                                                                    </Group>
+                                                                                )}
+                                                                                <Text size="sm" c="dimmed">
+                                                                                    Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "None"}
+                                                                                </Text>
+                                                                                <Text size="sm" c="dimmed">
+                                                                                    Time left: {formatTimeLeft(task.dueDate)}
+                                                                                </Text>
+                                                                                <Group>
+                                                                                    <Button
+                                                                                        size="xs"
+                                                                                        color="red"
+                                                                                        onClick={(event) => {
+                                                                                            event.stopPropagation();
+                                                                                            handleDelete(task._id);
+                                                                                        }}
+                                                                                    >
+                                                                                        Delete
+                                                                                    </Button>
+                                                                                </Group>
+                                                                            </Stack>
+                                                                        </Paper>
+                                                                    );
+                                                                    if (snapshot.isDragging) {
+                                                                        return createPortal(card, document.body);
+                                                                    }
+                                                                    return card;
+                                                                }}
+                                                            </Draggable>
                                                         ))}
-                                                        {provided.placeholder}
+                                                        {taskProvided.placeholder}
                                                     </Stack>
                                                 </div>
                                             )}
                                         </Droppable>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
-                        </DragDropContext>
+                        </div>
                     )}
                 </div>
                 <div className="task-board">
@@ -734,12 +661,14 @@ const Tasks = () => {
                                     data={statusOptions}
                                     value={status}
                                     onChange={(value) => setStatus(value || "")}
+                                    withinPortal
                                 />
                                 <MultiSelect
                                     data={labelOptions}
                                     value={labels}
                                     onChange={setLabels}
                                     placeholder="Labels"
+                                    withinPortal
                                 />
                                 <TextInput
                                     type="date"
@@ -752,13 +681,89 @@ const Tasks = () => {
                     </Paper>
                 </div>
             </div>
+            </DragDropContext>
         </div>
+        {isColumnsModalOpen && (
+            <div className="modal-overlay" onClick={() => setIsColumnsModalOpen(false)}>
+                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                    <div className="modal-scroll">
+                        <Title order={4}>Edit task columns</Title>
+                        <Stack mt="sm">
+                        <Title order={5}>Task labels</Title>
+                        <Group wrap="wrap" className="portal-popover">
+                            <TextInput
+                                placeholder="New label"
+                                value={newLabelName}
+                                onChange={(event) => setNewLabelName(event.currentTarget.value)}
+                            />
+                                    <ColorInput
+                                        value={newLabelColor}
+                                        onChange={setNewLabelColor}
+                                        withinPortal
+                                    />
+                            <Button variant="light" onClick={addLabel}>
+                                Add label
+                            </Button>
+                        </Group>
+                        <Title order={5}>Task columns</Title>
+                        <Group wrap="wrap" className="portal-popover">
+                            <TextInput
+                                placeholder="New column"
+                                value={newColumnName}
+                                onChange={(event) => setNewColumnName(event.currentTarget.value)}
+                            />
+                            <ColorInput
+                                value={newColumnColor}
+                                onChange={setNewColumnColor}
+                                withinPortal
+                            />
+                            <Button variant="light" onClick={addColumn}>
+                                Add column
+                            </Button>
+                        </Group>
+                        <Stack gap="xs">
+                            {taskColumns.map((column, index) => (
+                                <Group key={column.key} className="column-edit-row" wrap="nowrap">
+                                    <TextInput
+                                        value={column.name}
+                                        onChange={(event) =>
+                                            updateColumn(column.key, { name: event.currentTarget.value })
+                                        }
+                                    />
+                                    <ColorInput
+                                        value={column.color || "#e9dfcf"}
+                                        onChange={(value) => updateColumn(column.key, { color: value })}
+                                        withinPortal
+                                    />
+                                    <Button variant="light" onClick={() => moveColumn(index, -1)}>
+                                        Up
+                                    </Button>
+                                    <Button variant="light" onClick={() => moveColumn(index, 1)}>
+                                        Down
+                                    </Button>
+                                    <Button color="red" variant="light" onClick={() => deleteColumn(column.key)}>
+                                        Delete
+                                    </Button>
+                                </Group>
+                            ))}
+                        </Stack>
+                        <Group justify="flex-end">
+                            <Button variant="light" onClick={() => setIsColumnsModalOpen(false)}>
+                                Close
+                            </Button>
+                        </Group>
+                        </Stack>
+                    </div>
+                </div>
+            </div>
+        )}
         {isModalOpen && (
             <div className="modal-overlay" onClick={cancelEdit}>
                 <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                    <Title order={4}>Edit task</Title>
-                    <form onSubmit={handleUpdate}>
-                        <Stack mt="sm">
+                    <div className="modal-scroll">
+                        <Title order={4}>Edit task</Title>
+                        <form onSubmit={handleUpdate}>
+                            <Stack mt="sm">
                             <TextInput
                                 value={editTitle}
                                 onChange={(event) => setEditTitle(event.currentTarget.value)}
@@ -776,12 +781,14 @@ const Tasks = () => {
                                     data={statusOptions}
                                     value={editStatus}
                                     onChange={(value) => setEditStatus(value || "")}
+                                    withinPortal
                                 />
                                 <MultiSelect
                                     data={labelOptions}
                                     value={editLabels}
                                     onChange={setEditLabels}
                                     placeholder="Labels"
+                                    withinPortal
                                 />
                                 <TextInput
                                     type="date"
@@ -795,8 +802,9 @@ const Tasks = () => {
                                     Cancel
                                 </Button>
                             </Group>
-                        </Stack>
-                    </form>
+                            </Stack>
+                        </form>
+                    </div>
                 </div>
             </div>
         )}

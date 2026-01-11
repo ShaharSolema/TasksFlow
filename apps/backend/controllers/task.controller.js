@@ -1,8 +1,9 @@
 import { Task } from "../models/task.model.js";
 
+// Create a task for the authenticated user.
 const createTask = async (req, res) => {
     try {
-        const { title, description, status, dueDate } = req.body;
+        const { title, description, status, labels, dueDate, order } = req.body;
         if (!title || !title.trim()) {
             return res.status(400).json({ message: "Title is required." });
         }
@@ -11,6 +12,8 @@ const createTask = async (req, res) => {
             title: title.trim(),
             description: description ? description.trim() : undefined,
             status,
+            order: Number.isFinite(order) ? order : 0,
+            labels,
             dueDate,
             owner: req.user._id
         });
@@ -22,10 +25,11 @@ const createTask = async (req, res) => {
     }
 };
 
+// List tasks for the current user only.
 const listTasks = async (req, res) => {
     try {
         // Only return tasks owned by this user.
-        const tasks = await Task.find({ owner: req.user._id }).sort({ createdAt: -1 });
+        const tasks = await Task.find({ owner: req.user._id }).sort({ order: 1, createdAt: -1 });
         return res.status(200).json(tasks);
     } catch (error) {
         console.error("Error listing tasks:", error);
@@ -33,6 +37,7 @@ const listTasks = async (req, res) => {
     }
 };
 
+// Load a single task, scoping by owner for safety.
 const getTaskById = async (req, res) => {
     try {
         const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
@@ -46,9 +51,10 @@ const getTaskById = async (req, res) => {
     }
 };
 
+// Update fields that were sent by the client.
 const updateTask = async (req, res) => {
     try {
-        const { title, description, status, dueDate } = req.body;
+        const { title, description, status, labels, dueDate, order } = req.body;
         const updates = {};
         if (title !== undefined) {
             if (!title.trim()) {
@@ -61,6 +67,12 @@ const updateTask = async (req, res) => {
         }
         if (status !== undefined) {
             updates.status = status;
+        }
+        if (order !== undefined) {
+            updates.order = Number(order);
+        }
+        if (labels !== undefined) {
+            updates.labels = labels;
         }
         if (dueDate !== undefined) {
             updates.dueDate = dueDate;

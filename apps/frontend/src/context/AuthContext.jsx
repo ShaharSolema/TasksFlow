@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { API_BASE } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
-// Helper to keep API calls consistent and include cookies.
-const request = async (path, options = {}) => {
+// Shared request helper for auth calls.
+async function request(path, options = {}) {
     const response = await fetch(`${API_BASE}${path}`, {
         headers: {
             "Content-Type": "application/json",
@@ -20,14 +20,14 @@ const request = async (path, options = {}) => {
     }
 
     return response.json().catch(() => ({}));
-};
+}
 
-const AuthProvider = ({ children }) => {
+function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Fetch the logged-in user when the app starts.
-    const loadCurrentUser = async () => {
+    // Load the current user from the server on page refresh.
+    async function loadCurrentUser() {
         try {
             setLoading(true);
             const data = await request("/api/auth/me");
@@ -37,57 +37,61 @@ const AuthProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }
 
     useEffect(() => {
         loadCurrentUser();
     }, []);
 
-    const login = async (email, password) => {
+    // Login then refresh user state.
+    async function login(email, password) {
         await request("/api/auth/login", {
             method: "POST",
             body: JSON.stringify({ email, password })
         });
         await loadCurrentUser();
-    };
+    }
 
-    const register = async (username, email, password) => {
+    // Register then auto-login.
+    async function register(username, email, password) {
         await request("/api/auth/register", {
             method: "POST",
             body: JSON.stringify({ username, email, password })
         });
-    };
+        await login(email, password);
+    }
 
-    const logout = async () => {
+    // Logout clears the cookie and local state.
+    async function logout() {
         await request("/api/auth/logout", { method: "POST" });
         setUser(null);
-    };
+    }
 
-    const updateProfile = async (newUsername, newEmail) => {
+    // Update profile and sync state.
+    async function updateProfile(newUsername, newEmail) {
         const data = await request("/api/auth/update-profile", {
             method: "PUT",
             body: JSON.stringify({ newUsername, newEmail })
         });
         setUser(data.user || null);
         return data;
+    }
+
+    const value = {
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        updateProfile,
+        refresh: loadCurrentUser
     };
 
-    const value = useMemo(
-        () => ({
-            user,
-            loading,
-            login,
-            register,
-            logout,
-            updateProfile,
-            refresh: loadCurrentUser
-        }),
-        [user, loading]
-    );
-
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+}
 
-const useAuth = () => useContext(AuthContext);
+function useAuth() {
+    return useContext(AuthContext);
+}
 
 export { AuthProvider, useAuth };

@@ -1,4 +1,6 @@
 import mongoose,{Schema} from "mongoose";
+
+// User schema for auth + preferences (labels/columns).
 const userSchema=new Schema({
     username:{
         type:String,
@@ -27,7 +29,33 @@ const userSchema=new Schema({
         type: String,
         enum: ["user", "admin"],
         default: "user"
-    }
+    },
+    taskLabels: [
+        {
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    jobLabels: [
+        {
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    taskColumns: [
+        {
+            key: { type: String, trim: true, maxlength: 40 },
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ],
+    jobColumns: [
+        {
+            key: { type: String, trim: true, maxlength: 40 },
+            name: { type: String, trim: true, maxlength: 40 },
+            color: { type: String, trim: true, maxlength: 20 }
+        }
+    ]
 }, {
     timestamps:true
 });

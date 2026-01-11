@@ -1,8 +1,9 @@
-import {User} from '../models/user.model.js';
+import { User } from '../models/user.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-const registerUser = async (req, res) => {
+// Register a new user.
+async function registerUser(req, res) {
     try {
         const { username, email, password } = req.body;
 
@@ -38,9 +39,10 @@ const registerUser = async (req, res) => {
         console.error('Error registering user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const loginUser = async (req, res) => {
-    // Login logic here
+}
+
+// Log in and set the auth cookie.
+async function loginUser(req, res) {
     try {
         const { email, password } = req.body;
         // Validate input
@@ -65,32 +67,33 @@ const loginUser = async (req, res) => {
             httpOnly: true,
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            path: '/'
         });
         res.status(200).json({ message: 'Login successful.' });
-        
     } catch (error) {
         console.error('Error logging in user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const logoutUser = async (req, res) => {
-    // Logout logic here
+}
+
+// Clear the auth cookie.
+async function logoutUser(req, res) {
     try {
         res.clearCookie('token', {
             httpOnly: true,
             sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production'
+            secure: process.env.NODE_ENV === 'production',
+            path: '/'
         });
         res.status(200).json({ message: 'Logout successful.' });
-        
     } catch (error) {
         console.error('Error logging out user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const updateUserProfile = async (req, res) => {
-    // Profile update logic
+}
+
+// Update username and/or email for the current user.
+async function updateUserProfile(req, res) {
     try {
         const { newUsername, newEmail } = req.body;
         // Validate input
@@ -128,16 +131,14 @@ const updateUserProfile = async (req, res) => {
             message: 'Profile updated successfully.',
             user: { id: user._id, username: user.username, email: user.email, role: user.role }
         });
-
-
-
-
     } catch (error) {
         console.error('Error updating profile:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-const getCurrentUser = async (req, res) => {
+}
+
+// Return the current user basics.
+async function getCurrentUser(req, res) {
     try {
         const user = await User.findById(req.user._id).select('username email role');
         if (!user) {
@@ -148,9 +149,6 @@ const getCurrentUser = async (req, res) => {
         console.error('Error loading current user:', error);
         return res.status(500).json({ message: 'Server error. Please try again later.' });
     }
-};
-export { registerUser };
-export { loginUser };
-export { logoutUser };
-export { updateUserProfile };
-export { getCurrentUser };
+}
+
+export { registerUser, loginUser, logoutUser, updateUserProfile, getCurrentUser };

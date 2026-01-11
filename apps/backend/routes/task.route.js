@@ -10,6 +10,7 @@ import {
 
 const router = Router();
 
+// Task routes require authentication.
 router.use(authRequired);
 router.get("/", listTasks);
 router.post("/", createTask);
