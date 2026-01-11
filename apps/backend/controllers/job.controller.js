@@ -1,5 +1,6 @@
 import { Job } from "../models/job.model.js";
 
+// Create a job entry for the authenticated user.
 const createJob = async (req, res) => {
     try {
         const {
@@ -55,6 +56,7 @@ const createJob = async (req, res) => {
     }
 };
 
+// List jobs owned by the current user.
 const listJobs = async (req, res) => {
     try {
         const jobs = await Job.find({ owner: req.user._id }).sort({ order: 1, createdAt: -1 });
@@ -65,6 +67,7 @@ const listJobs = async (req, res) => {
     }
 };
 
+// Fetch one job owned by the current user.
 const getJobById = async (req, res) => {
     try {
         const job = await Job.findOne({ _id: req.params.id, owner: req.user._id });
@@ -78,6 +81,7 @@ const getJobById = async (req, res) => {
     }
 };
 
+// Update only the fields provided by the client.
 const updateJob = async (req, res) => {
     try {
         const updates = req.body || {};
@@ -103,6 +107,7 @@ const updateJob = async (req, res) => {
     }
 };
 
+// Remove a job owned by the current user.
 const deleteJob = async (req, res) => {
     try {
         const job = await Job.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
@@ -116,6 +121,7 @@ const deleteJob = async (req, res) => {
     }
 };
 
+// Proxy an external salary API (optional).
 const estimateSalary = async (req, res) => {
     try {
         const { title, location, jobType } = req.query;

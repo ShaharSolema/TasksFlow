@@ -1,7 +1,9 @@
 import { User } from "../models/user.model.js";
 
+// We only store labels now (categories removed).
 const pickCollections = (type) => (type === "task" ? "taskLabels" : "jobLabels");
 
+// Return labels for the requested type.
 const listTags = async (req, res) => {
     try {
         const { type } = req.params;
@@ -19,6 +21,7 @@ const listTags = async (req, res) => {
     }
 };
 
+// Add a new label for the current user.
 const addLabel = async (req, res) => {
     try {
         const { type } = req.params;

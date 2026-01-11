@@ -5,6 +5,7 @@ const Sidebar = () => {
     const { user } = useAuth();
     const location = useLocation();
 
+    // Highlight the active route.
     const isActive = (path) => location.pathname === path;
 
     return (

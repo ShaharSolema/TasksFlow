@@ -1,4 +1,6 @@
 import mongoose,{Schema} from "mongoose";
+
+// User schema for auth + preferences (labels/columns).
 const userSchema=new Schema({
     username:{
         type:String,

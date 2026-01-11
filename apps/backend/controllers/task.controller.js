@@ -1,5 +1,6 @@
 import { Task } from "../models/task.model.js";
 
+// Create a task for the authenticated user.
 const createTask = async (req, res) => {
     try {
         const { title, description, status, labels, dueDate, order } = req.body;
@@ -24,6 +25,7 @@ const createTask = async (req, res) => {
     }
 };
 
+// List tasks for the current user only.
 const listTasks = async (req, res) => {
     try {
         // Only return tasks owned by this user.
@@ -35,6 +37,7 @@ const listTasks = async (req, res) => {
     }
 };
 
+// Load a single task, scoping by owner for safety.
 const getTaskById = async (req, res) => {
     try {
         const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
@@ -48,6 +51,7 @@ const getTaskById = async (req, res) => {
     }
 };
 
+// Update fields that were sent by the client.
 const updateTask = async (req, res) => {
     try {
         const { title, description, status, labels, dueDate, order } = req.body;

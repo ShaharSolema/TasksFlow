@@ -5,6 +5,7 @@ import { getAnalytics, listUsers, updateUserRole } from "../controllers/admin.co
 
 const router = Router();
 
+// Admin-only endpoints.
 router.get("/analytics", authRequired, adminRequired, getAnalytics);
 router.get("/users", authRequired, adminRequired, listUsers);
 router.patch("/users/:id/role", authRequired, adminRequired, updateUserRole);

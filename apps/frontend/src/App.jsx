@@ -12,6 +12,7 @@ function App() {
                 defaultRadius: "md"
             }}
         >
+            {/* App-level providers */}
             <ErrorBoundary>
                 <AuthProvider>
                     <AppRoutes />

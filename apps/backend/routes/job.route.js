@@ -11,6 +11,7 @@ import {
 
 const router = Router();
 
+// Job routes require authentication.
 router.use(authRequired);
 router.get("/", listJobs);
 router.post("/", createJob);

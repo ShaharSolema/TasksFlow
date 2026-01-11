@@ -30,6 +30,7 @@ const JOB_STATUS_COLORS = [
     "#d4a090"
 ];
 
+// Admin analytics dashboard.
 const Charts = () => {
     const { user } = useAuth();
     const [data, setData] = useState(null);

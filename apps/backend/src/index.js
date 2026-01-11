@@ -11,6 +11,7 @@ dotenv.config({
     path: path.resolve(__dirname, '../.env')
 });
 
+// Boot the server after DB connects.
 async function startServer() {
     try {
         await connectDB();

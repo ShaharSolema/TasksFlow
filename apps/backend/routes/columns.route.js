@@ -4,6 +4,7 @@ import { addColumn, listColumns, updateColumn, deleteColumn, reorderColumns } fr
 
 const router = Router();
 
+// Column routes require authentication.
 router.use(authRequired);
 router.get("/:type", listColumns);
 router.post("/:type", addColumn);

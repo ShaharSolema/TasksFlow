@@ -7,6 +7,7 @@ function ProtectedRoute({ children }) {
     const location = useLocation();
     const [showLoader, setShowLoader] = useState(true);
 
+    // Keep the loader visible for a short moment.
     useEffect(() => {
         const timer = setTimeout(() => {
             setShowLoader(false);

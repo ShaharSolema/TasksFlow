@@ -2,6 +2,7 @@ import { Task } from "../models/task.model.js";
 import { Job } from "../models/job.model.js";
 import { User } from "../models/user.model.js";
 
+// Aggregate analytics for the admin dashboard.
 const getAnalytics = async (req, res) => {
     try {
         // Tasks created per day.
@@ -116,6 +117,7 @@ const getAnalytics = async (req, res) => {
     }
 };
 
+// List basic user info for admin view.
 const listUsers = async (req, res) => {
     try {
         const users = await User.find()
@@ -128,6 +130,7 @@ const listUsers = async (req, res) => {
     }
 };
 
+// Update a user's role (admin/user).
 const updateUserRole = async (req, res) => {
     try {
         const { role } = req.body;

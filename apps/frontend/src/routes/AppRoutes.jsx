@@ -17,6 +17,7 @@ function AppRoutes() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Home />} />
+                {/* Public auth pages */}
                 <Route
                     path="/login"
                     element={
@@ -33,6 +34,7 @@ function AppRoutes() {
                         </AuthLayout>
                     }
                 />
+                {/* Protected dashboard pages */}
                 <Route
                     path="/profile"
                     element={

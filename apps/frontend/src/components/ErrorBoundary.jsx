@@ -1,5 +1,6 @@
 import React from "react";
 
+// Catch rendering errors and show a friendly message.
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);

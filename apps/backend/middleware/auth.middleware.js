@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 
+// Verify JWT from cookie or Authorization header.
 const authRequired = (req, res, next) => {
     // Accept token from cookie or Authorization header (useful for tests).
     const authHeader = req.headers.authorization || '';

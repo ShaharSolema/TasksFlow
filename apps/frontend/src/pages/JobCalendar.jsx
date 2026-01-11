@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { API_BASE } from "../lib/api.js";
 
+// Build the month grid for the calendar.
 const buildMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -28,16 +29,21 @@ const JobCalendar = () => {
     const [error, setError] = useState("");
     const [currentDate, setCurrentDate] = useState(new Date());
 
+    // Small fetch helper for this page.
+    const fetchJson = async (path) => {
+        const response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.message || "Request failed.");
+        }
+        return data;
+    };
+
     const loadJobs = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/jobs`, { credentials: "include" });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to load jobs.");
-            }
-            const data = await response.json();
-            setJobs(data || []);
+            const data = await fetchJson("/api/jobs");
+            setJobs(Array.isArray(data) ? data : []);
         } catch (err) {
             setError(err.message || "Failed to load jobs.");
         } finally {

@@ -3,5 +3,6 @@ import "@mantine/core/styles.css";
 import App from "./App.jsx";
 import "./styles.css";
 
+// Mount the React app.
 const root = createRoot(document.getElementById("root"));
 root.render(<App />);

@@ -1,3 +1,4 @@
+// Layout for login/register pages.
 const AuthLayout = ({ children }) => (
     <>
         <div className="background" />

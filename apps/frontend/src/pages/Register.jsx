@@ -12,6 +12,7 @@ const Register = () => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Submit registration form.
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError("");

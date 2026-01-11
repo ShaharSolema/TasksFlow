@@ -1,3 +1,4 @@
+// Allow only admin users to continue.
 const adminRequired = (req, res, next) => {
     // Block non-admin users from admin-only routes.
     if (!req.user || req.user.role !== 'admin') {

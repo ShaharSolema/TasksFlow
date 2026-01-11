@@ -1,6 +1,7 @@
 import Sidebar from "./Sidebar.jsx";
 import TopBar from "./TopBar.jsx";
 
+// Shared layout for authenticated pages.
 const DashboardLayout = ({ children }) => (
     <>
         <div className="background" />

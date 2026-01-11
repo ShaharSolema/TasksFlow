@@ -16,13 +16,14 @@ app.use(cors({
     origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
     credentials: true
 }));
-// Routes
+// API routes.
 app.use('/api/auth', authRouter);
 app.use('/api/tasks', taskRouter);
 app.use('/api/jobs', jobRouter);
 app.use('/api/tags', tagsRouter);
 app.use('/api/columns', columnsRouter);
 app.use('/api/admin', adminRouter);
+// Simple health check.
 app.get('/', (req, res) => {
     res.json({ status: 'ok' });
 });

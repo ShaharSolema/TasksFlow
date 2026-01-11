@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
+// Task schema for a user's personal tasks.
 const taskSchema = new Schema(
     {
         title: {

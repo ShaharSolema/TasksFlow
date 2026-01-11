@@ -6,6 +6,7 @@ const Home = () => {
 
     return (
         <>
+            {/* Landing background */}
             <div className="background" />
             <div className="orb orb-1" />
             <div className="orb orb-2" />

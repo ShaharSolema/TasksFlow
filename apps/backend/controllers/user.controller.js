@@ -2,6 +2,7 @@ import { User } from '../models/user.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
+// Register a new user.
 async function registerUser(req, res) {
     try {
         const { username, email, password } = req.body;
@@ -40,8 +41,8 @@ async function registerUser(req, res) {
     }
 }
 
+// Log in and set the auth cookie.
 async function loginUser(req, res) {
-    // Login logic here
     try {
         const { email, password } = req.body;
         // Validate input
@@ -69,15 +70,14 @@ async function loginUser(req, res) {
             path: '/'
         });
         res.status(200).json({ message: 'Login successful.' });
-        
     } catch (error) {
         console.error('Error logging in user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 }
 
+// Clear the auth cookie.
 async function logoutUser(req, res) {
-    // Logout logic here
     try {
         res.clearCookie('token', {
             httpOnly: true,
@@ -86,15 +86,14 @@ async function logoutUser(req, res) {
             path: '/'
         });
         res.status(200).json({ message: 'Logout successful.' });
-        
     } catch (error) {
         console.error('Error logging out user:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 }
 
+// Update username and/or email for the current user.
 async function updateUserProfile(req, res) {
-    // Profile update logic
     try {
         const { newUsername, newEmail } = req.body;
         // Validate input
@@ -132,16 +131,13 @@ async function updateUserProfile(req, res) {
             message: 'Profile updated successfully.',
             user: { id: user._id, username: user.username, email: user.email, role: user.role }
         });
-
-
-
-
     } catch (error) {
         console.error('Error updating profile:', error);
         res.status(500).json({ message: 'Server error. Please try again later.' });
     }
 }
 
+// Return the current user basics.
 async function getCurrentUser(req, res) {
     try {
         const user = await User.findById(req.user._id).select('username email role');

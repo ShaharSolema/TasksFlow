@@ -9,10 +9,12 @@ const TopBar = () => {
     const [open, setOpen] = useState(false);
     const menuRef = useRef(null);
 
+    // Quick initials for the avatar button.
     const initials = user?.username
         ? user.username.trim().slice(0, 2).toUpperCase()
         : "U";
 
+    // Logout then redirect to login.
     const handleLogout = async () => {
         await logout();
         setOpen(false);
@@ -20,6 +22,7 @@ const TopBar = () => {
     };
 
     useEffect(() => {
+        // Close the menu when clicking outside or scrolling.
         const handleClick = (event) => {
             if (!menuRef.current) return;
             if (!menuRef.current.contains(event.target)) {
@@ -46,7 +49,6 @@ const TopBar = () => {
         "/profile": "Profile"
     };
     const pageTitle = pageTitles[location.pathname] || "Workspace";
-    
 
     return (
         <header className="navbar">

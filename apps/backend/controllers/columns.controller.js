@@ -1,5 +1,6 @@
 import { User } from "../models/user.model.js";
 
+// Default columns used when a user has none.
 const defaults = {
     task: [
         { key: "todo", name: "todo", color: "#e9dfcf" },
@@ -15,6 +16,7 @@ const defaults = {
     ]
 };
 
+// Map request type to the user field.
 const pickKey = (type) => (type === "task" ? "taskColumns" : "jobColumns");
 
 const normalizeKey = (value) =>
@@ -24,6 +26,7 @@ const normalizeKey = (value) =>
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
+// Return columns for the current user.
 const listColumns = async (req, res) => {
     try {
         const { type } = req.params;
@@ -43,6 +46,7 @@ const listColumns = async (req, res) => {
     }
 };
 
+// Add a new column for the current user.
 const addColumn = async (req, res) => {
     try {
         const { type } = req.params;
@@ -75,6 +79,7 @@ const addColumn = async (req, res) => {
     }
 };
 
+// Update a column name or color.
 const updateColumn = async (req, res) => {
     try {
         const { type, key: columnKey } = req.params;
@@ -105,6 +110,7 @@ const updateColumn = async (req, res) => {
     }
 };
 
+// Delete a column by key.
 const deleteColumn = async (req, res) => {
     try {
         const { type, key: columnKey } = req.params;
@@ -126,6 +132,7 @@ const deleteColumn = async (req, res) => {
     }
 };
 
+// Reorder columns by the provided key list.
 const reorderColumns = async (req, res) => {
     try {
         const { type } = req.params;

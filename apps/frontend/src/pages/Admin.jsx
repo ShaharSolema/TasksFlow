@@ -8,17 +8,23 @@ const Admin = () => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Small fetch helper for admin requests.
+    const fetchJson = async (path, options = {}) => {
+        const response = await fetch(`${API_BASE}${path}`, {
+            credentials: "include",
+            ...options
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.message || "Request failed.");
+        }
+        return data;
+    };
+
     const loadUsers = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/admin/users`, {
-                credentials: "include"
-            });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to load users.");
-            }
-            const data = await response.json();
+            const data = await fetchJson("/api/admin/users");
             setUsers(data.users || []);
         } catch (err) {
             setError(err.message || "Failed to load users.");
@@ -35,22 +41,18 @@ const Admin = () => {
 
     const updateRole = async (userId, role) => {
         try {
-            const response = await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
+            await fetchJson(`/api/admin/users/${userId}/role`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({ role })
             });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to update role.");
-            }
             await loadUsers();
         } catch (err) {
             setError(err.message || "Failed to update role.");
         }
     };
 
+    // Guard: only admins can view this page.
     if (!user || user.role !== "admin") {
         return (
             <div className="page">

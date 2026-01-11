@@ -11,6 +11,7 @@ const Login = () => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Submit login form.
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError("");

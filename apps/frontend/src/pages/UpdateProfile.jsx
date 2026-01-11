@@ -17,6 +17,7 @@ const UpdateProfile = () => {
         }
     }, [user]);
 
+    // Save profile updates.
     const handleSubmit = async (event) => {
         event.preventDefault();
         setMessage("");

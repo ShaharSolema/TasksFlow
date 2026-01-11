@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
+// Job schema for applications and interviews.
 const reminderSchema = new Schema(
     {
         date: { type: Date, required: true },

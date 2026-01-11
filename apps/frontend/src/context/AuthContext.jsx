@@ -3,6 +3,7 @@ import { API_BASE } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
+// Shared request helper for auth calls.
 async function request(path, options = {}) {
     const response = await fetch(`${API_BASE}${path}`, {
         headers: {
@@ -25,6 +26,7 @@ function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Load the current user from the server on page refresh.
     async function loadCurrentUser() {
         try {
             setLoading(true);
@@ -41,6 +43,7 @@ function AuthProvider({ children }) {
         loadCurrentUser();
     }, []);
 
+    // Login then refresh user state.
     async function login(email, password) {
         await request("/api/auth/login", {
             method: "POST",
@@ -49,6 +52,7 @@ function AuthProvider({ children }) {
         await loadCurrentUser();
     }
 
+    // Register then auto-login.
     async function register(username, email, password) {
         await request("/api/auth/register", {
             method: "POST",
@@ -57,11 +61,13 @@ function AuthProvider({ children }) {
         await login(email, password);
     }
 
+    // Logout clears the cookie and local state.
     async function logout() {
         await request("/api/auth/logout", { method: "POST" });
         setUser(null);
     }
 
+    // Update profile and sync state.
     async function updateProfile(newUsername, newEmail) {
         const data = await request("/api/auth/update-profile", {
             method: "PUT",
