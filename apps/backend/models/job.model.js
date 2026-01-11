@@ -37,11 +37,6 @@ const jobSchema = new Schema(
             enum: ["full-time", "part-time", "contract", "internship", "freelance"],
             default: "full-time"
         },
-        category: {
-            type: String,
-            trim: true,
-            maxlength: 80
-        },
         labels: [
             {
                 type: String,

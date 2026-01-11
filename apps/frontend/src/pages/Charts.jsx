@@ -118,7 +118,10 @@ const Charts = () => {
         return (
             <div className="page">
                 <h1>Charts</h1>
-                <p className="muted">Loading analytics...</p>
+                <div className="inline-loading">
+                    <span className="mini-spinner" />
+                    <span className="muted">Loading analytics...</span>
+                </div>
             </div>
         );
     }
@@ -144,9 +147,12 @@ const Charts = () => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={tasksPerDay}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                                    <YAxis allowDecimals={false} />
-                                    <Tooltip />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#000" }} />
+                                    <YAxis allowDecimals={false} tick={{ fill: "#000" }} />
+                                    <Tooltip
+                                        contentStyle={{ color: "#000" }}
+                                        labelStyle={{ color: "#000" }}
+                                    />
                                     <Line type="monotone" dataKey="count" stroke="#34d399" strokeWidth={3} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -158,9 +164,12 @@ const Charts = () => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={jobsPerDay}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                                    <YAxis allowDecimals={false} />
-                                    <Tooltip />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#000" }} />
+                                    <YAxis allowDecimals={false} tick={{ fill: "#000" }} />
+                                    <Tooltip
+                                        contentStyle={{ color: "#000" }}
+                                        labelStyle={{ color: "#000" }}
+                                    />
                                     <Line type="monotone" dataKey="count" stroke="#d4a574" strokeWidth={3} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -171,13 +180,16 @@ const Charts = () => {
                             <h2>Status distribution</h2>
                             <div className="chart-shell small">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={statusDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
-                                            {statusDistribution.map((entry) => (
-                                                <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || "#c8b48c"} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
+                                        <PieChart>
+                                            <Pie data={statusDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                                                {statusDistribution.map((entry) => (
+                                                    <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || "#c8b48c"} />
+                                                ))}
+                                            </Pie>
+                                        <Tooltip
+                                            contentStyle={{ color: "#000" }}
+                                            labelStyle={{ color: "#000" }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
@@ -188,9 +200,12 @@ const Charts = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topUsers || []}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                                        <XAxis dataKey="username" tick={{ fontSize: 12 }} />
-                                        <YAxis allowDecimals={false} />
-                                        <Tooltip />
+                                        <XAxis dataKey="username" tick={{ fontSize: 12, fill: "#000" }} />
+                                        <YAxis allowDecimals={false} tick={{ fill: "#000" }} />
+                                        <Tooltip
+                                            contentStyle={{ color: "#000" }}
+                                            labelStyle={{ color: "#000" }}
+                                        />
                                         <Bar dataKey="count" fill="#34d399" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -200,13 +215,16 @@ const Charts = () => {
                             <h2>Job status</h2>
                             <div className="chart-shell small">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={jobStatusDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
-                                            {jobStatusDistribution.map((entry, index) => (
-                                                <Cell key={entry.name} fill={JOB_STATUS_COLORS[index % JOB_STATUS_COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
+                                        <PieChart>
+                                            <Pie data={jobStatusDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                                                {jobStatusDistribution.map((entry, index) => (
+                                                    <Cell key={entry.name} fill={JOB_STATUS_COLORS[index % JOB_STATUS_COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                        <Tooltip
+                                            contentStyle={{ color: "#000" }}
+                                            labelStyle={{ color: "#000" }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
@@ -217,9 +235,12 @@ const Charts = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={jobTypeDistribution}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                        <YAxis allowDecimals={false} />
-                                        <Tooltip />
+                                        <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#000" }} />
+                                        <YAxis allowDecimals={false} tick={{ fill: "#000" }} />
+                                        <Tooltip
+                                            contentStyle={{ color: "#000" }}
+                                            labelStyle={{ color: "#000" }}
+                                        />
                                         <Bar dataKey="value" fill="#d4a574" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -231,9 +252,12 @@ const Charts = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topCompanies || []}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
-                                        <XAxis dataKey="company" tick={{ fontSize: 12 }} />
-                                        <YAxis allowDecimals={false} />
-                                        <Tooltip />
+                                        <XAxis dataKey="company" tick={{ fontSize: 12, fill: "#000" }} />
+                                        <YAxis allowDecimals={false} tick={{ fill: "#000" }} />
+                                        <Tooltip
+                                            contentStyle={{ color: "#000" }}
+                                            labelStyle={{ color: "#000" }}
+                                        />
                                         <Bar dataKey="count" fill="#7ac4b8" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>

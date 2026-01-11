@@ -54,6 +54,7 @@ function AuthProvider({ children }) {
             method: "POST",
             body: JSON.stringify({ username, email, password })
         });
+        await login(email, password);
     }
 
     async function logout() {

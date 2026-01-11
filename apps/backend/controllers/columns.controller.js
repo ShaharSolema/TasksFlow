@@ -126,4 +126,38 @@ const deleteColumn = async (req, res) => {
     }
 };
 
-export { listColumns, addColumn, updateColumn, deleteColumn };
+const reorderColumns = async (req, res) => {
+    try {
+        const { type } = req.params;
+        const { order } = req.body;
+        if (!["task", "job"].includes(type)) {
+            return res.status(400).json({ message: "Invalid type." });
+        }
+        if (!Array.isArray(order) || order.length === 0) {
+            return res.status(400).json({ message: "Order array is required." });
+        }
+        const key = pickKey(type);
+        const user = await User.findById(req.user._id);
+        const current = user[key] || [];
+        const map = new Map(current.map((col) => [col.key, col]));
+        if (order.length !== current.length) {
+            return res.status(400).json({ message: "Order length mismatch." });
+        }
+        const nextColumns = [];
+        for (const columnKey of order) {
+            const column = map.get(columnKey);
+            if (!column) {
+                return res.status(400).json({ message: "Invalid column order." });
+            }
+            nextColumns.push(column);
+        }
+        user[key] = nextColumns;
+        await user.save();
+        return res.status(200).json({ columns: user[key] });
+    } catch (error) {
+        console.error("Error reordering columns:", error);
+        return res.status(500).json({ message: "Server error. Please try again later." });
+    }
+};
+
+export { listColumns, addColumn, updateColumn, deleteColumn, reorderColumns };

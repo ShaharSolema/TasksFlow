@@ -28,19 +28,7 @@ const userSchema=new Schema({
         enum: ["user", "admin"],
         default: "user"
     },
-    taskCategories: [
-        {
-            name: { type: String, trim: true, maxlength: 40 },
-            color: { type: String, trim: true, maxlength: 20 }
-        }
-    ],
     taskLabels: [
-        {
-            name: { type: String, trim: true, maxlength: 40 },
-            color: { type: String, trim: true, maxlength: 20 }
-        }
-    ],
-    jobCategories: [
         {
             name: { type: String, trim: true, maxlength: 40 },
             color: { type: String, trim: true, maxlength: 20 }

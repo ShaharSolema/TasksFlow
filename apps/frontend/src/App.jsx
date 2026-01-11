@@ -1,6 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import AppRoutes from "./routes/AppRoutes.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 function App() {
     return (
@@ -11,9 +12,11 @@ function App() {
                 defaultRadius: "md"
             }}
         >
-            <AuthProvider>
-                <AppRoutes />
-            </AuthProvider>
+            <ErrorBoundary>
+                <AuthProvider>
+                    <AppRoutes />
+                </AuthProvider>
+            </ErrorBoundary>
         </MantineProvider>
     );
 }

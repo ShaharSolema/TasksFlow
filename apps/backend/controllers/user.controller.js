@@ -66,7 +66,6 @@ async function loginUser(req, res) {
             httpOnly: true,
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
             path: '/'
         });
         res.status(200).json({ message: 'Login successful.' });

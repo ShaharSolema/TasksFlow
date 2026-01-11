@@ -24,11 +24,6 @@ const taskSchema = new Schema(
             type: Number,
             default: 0
         },
-        category: {
-            type: String,
-            trim: true,
-            maxlength: 40
-        },
         labels: [
             {
                 type: String,

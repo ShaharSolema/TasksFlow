@@ -71,7 +71,7 @@ const Home = () => {
                 <div className="landing-grid">
                     <div className="landing-card glass-panel">
                         <h3>Kanban that adapts</h3>
-                        <p>Design your own columns, labels, and categories per workspace.</p>
+                        <p>Design your own columns and labels per workspace.</p>
                     </div>
                     <div className="landing-card glass-panel">
                         <h3>Job tracker built in</h3>

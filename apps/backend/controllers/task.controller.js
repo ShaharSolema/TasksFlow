@@ -2,7 +2,7 @@ import { Task } from "../models/task.model.js";
 
 const createTask = async (req, res) => {
     try {
-        const { title, description, status, category, labels, dueDate, order } = req.body;
+        const { title, description, status, labels, dueDate, order } = req.body;
         if (!title || !title.trim()) {
             return res.status(400).json({ message: "Title is required." });
         }
@@ -12,7 +12,6 @@ const createTask = async (req, res) => {
             description: description ? description.trim() : undefined,
             status,
             order: Number.isFinite(order) ? order : 0,
-            category,
             labels,
             dueDate,
             owner: req.user._id
@@ -51,7 +50,7 @@ const getTaskById = async (req, res) => {
 
 const updateTask = async (req, res) => {
     try {
-        const { title, description, status, category, labels, dueDate, order } = req.body;
+        const { title, description, status, labels, dueDate, order } = req.body;
         const updates = {};
         if (title !== undefined) {
             if (!title.trim()) {
@@ -67,9 +66,6 @@ const updateTask = async (req, res) => {
         }
         if (order !== undefined) {
             updates.order = Number(order);
-        }
-        if (category !== undefined) {
-            updates.category = category;
         }
         if (labels !== undefined) {
             updates.labels = labels;

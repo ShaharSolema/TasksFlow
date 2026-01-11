@@ -63,17 +63,26 @@ const Jobs = () => {
     const [quickAddTitle, setQuickAddTitle] = useState("");
     const [quickAddLoading, setQuickAddLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isColumnsModalOpen, setIsColumnsModalOpen] = useState(false);
+
+    // Simple fetch helper to keep the requests readable.
+    const fetchJson = async (path, options = {}) => {
+        const response = await fetch(`${API_BASE}${path}`, {
+            credentials: "include",
+            ...options
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.message || "Request failed.");
+        }
+        return data;
+    };
 
     const loadJobs = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/jobs`, { credentials: "include" });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to load jobs.");
-            }
-            const data = await response.json();
-            setJobs(data || []);
+            const data = await fetchJson("/api/jobs");
+            setJobs(Array.isArray(data) ? data : []);
         } catch (err) {
             setError(err.message || "Failed to load jobs.");
         } finally {
@@ -83,30 +92,16 @@ const Jobs = () => {
 
     const loadTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/tags/job`, {
-                credentials: "include"
-            });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to load categories.");
-            }
-            const data = await response.json();
+            const data = await fetchJson("/api/tags/job");
             setJobLabels(data.labels || []);
         } catch (err) {
-            setError(err.message || "Failed to load categories.");
+            setError(err.message || "Failed to load labels.");
         }
     };
 
     const loadColumns = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/columns/job`, {
-                credentials: "include"
-            });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to load columns.");
-            }
-            const data = await response.json();
+            const data = await fetchJson("/api/columns/job");
             setJobColumns(data.columns || []);
             if (data.columns && data.columns.length > 0 && !status) {
                 setStatus(data.columns[0].key);
@@ -153,6 +148,7 @@ const Jobs = () => {
         return base;
     }, [filteredJobs, jobColumns]);
 
+    // Move jobs locally first, then sync their order.
     const onDragEnd = async (result) => {
         if (!result.destination) return;
         const { destination, draggableId, source } = result;
@@ -232,10 +228,9 @@ const Jobs = () => {
         event.preventDefault();
         setError("");
         try {
-            const response = await fetch(`${API_BASE}/api/jobs`, {
+            await fetchJson("/api/jobs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({
                     company: company.trim() || undefined,
                     title,
@@ -254,10 +249,6 @@ const Jobs = () => {
                     reminders
                 })
             });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to create job.");
-            }
             setCompany("");
             setTitle("");
             setStatus(jobColumns[0]?.key || "");
@@ -284,19 +275,14 @@ const Jobs = () => {
         if (!titleValue) return;
         setQuickAddLoading(true);
         try {
-            const response = await fetch(`${API_BASE}/api/jobs`, {
+            await fetchJson("/api/jobs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({
                     title: titleValue,
                     status: statusKey
                 })
             });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to create job.");
-            }
             setQuickAddTitle("");
             setQuickAddStatus(null);
             await loadJobs();
@@ -351,16 +337,11 @@ const Jobs = () => {
                 nextInterviewDate: editData.nextInterviewDate || undefined,
                 followUpDate: editData.followUpDate || undefined
             };
-            const response = await fetch(`${API_BASE}/api/jobs/${editingId}`, {
+            await fetchJson(`/api/jobs/${editingId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(payload)
             });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to update job.");
-            }
             await loadJobs();
             cancelEdit();
         } catch (err) {
@@ -371,14 +352,9 @@ const Jobs = () => {
     const handleDelete = async (jobId) => {
         setError("");
         try {
-            const response = await fetch(`${API_BASE}/api/jobs/${jobId}`, {
-                method: "DELETE",
-                credentials: "include"
+            await fetchJson(`/api/jobs/${jobId}`, {
+                method: "DELETE"
             });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to delete job.");
-            }
             await loadJobs();
         } catch (err) {
             setError(err.message || "Failed to delete job.");
@@ -392,16 +368,11 @@ const Jobs = () => {
             return;
         }
         try {
-            const url = new URL(`${API_BASE}/api/jobs/estimate-salary`);
-            url.searchParams.set("title", title);
-            if (location) url.searchParams.set("location", location);
-            if (jobType) url.searchParams.set("jobType", jobType);
-            const response = await fetch(url.toString(), { credentials: "include" });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to estimate salary.");
-            }
-            const payload = await response.json();
+            const params = new URLSearchParams();
+            params.set("title", title);
+            if (location) params.set("location", location);
+            if (jobType) params.set("jobType", jobType);
+            const payload = await fetchJson(`/api/jobs/estimate-salary?${params.toString()}`);
             if (payload.estimate) {
                 setExpectedSalary(payload.estimate);
                 setSalaryCurrency(payload.currency || "USD");
@@ -442,17 +413,11 @@ const Jobs = () => {
     const addLabel = async () => {
         if (!newLabelName.trim()) return;
         try {
-            const response = await fetch(`${API_BASE}/api/tags/job/labels`, {
+            const data = await fetchJson("/api/tags/job/labels", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({ name: newLabelName, color: newLabelColor })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to add label.");
-            }
-            const data = await response.json();
             setJobLabels(data.labels || []);
             setNewLabelName("");
         } catch (err) {
@@ -463,17 +428,11 @@ const Jobs = () => {
     const addColumn = async () => {
         if (!newColumnName.trim()) return;
         try {
-            const response = await fetch(`${API_BASE}/api/columns/job`, {
+            const data = await fetchJson("/api/columns/job", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify({ name: newColumnName, color: newColumnColor })
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to add column.");
-            }
-            const data = await response.json();
             setJobColumns(data.columns || []);
             setNewColumnName("");
         } catch (err) {
@@ -483,34 +442,46 @@ const Jobs = () => {
 
     const updateColumn = async (columnKey, updates) => {
         try {
-            const response = await fetch(`${API_BASE}/api/columns/job/${columnKey}`, {
+            const data = await fetchJson(`/api/columns/job/${columnKey}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(updates)
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to update column.");
-            }
-            const data = await response.json();
             setJobColumns(data.columns || []);
         } catch (err) {
             setError(err.message || "Failed to update column.");
         }
     };
 
+    const reorderColumns = async (nextColumns) => {
+        try {
+            const data = await fetchJson("/api/columns/job", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ order: nextColumns.map((col) => col.key) })
+            });
+            setJobColumns(data.columns || []);
+        } catch (err) {
+            setError(err.message || "Failed to reorder columns.");
+        }
+    };
+
+    const moveColumn = (index, direction) => {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= jobColumns.length) return;
+        const next = [...jobColumns];
+        const temp = next[index];
+        next[index] = next[nextIndex];
+        next[nextIndex] = temp;
+        setJobColumns(next);
+        reorderColumns(next);
+    };
+
     const deleteColumn = async (columnKey) => {
         try {
-            const response = await fetch(`${API_BASE}/api/columns/job/${columnKey}`, {
-                method: "DELETE",
-                credentials: "include"
+            const data = await fetchJson(`/api/columns/job/${columnKey}`, {
+                method: "DELETE"
             });
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.message || "Failed to delete column.");
-            }
-            const data = await response.json();
             setJobColumns(data.columns || []);
         } catch (err) {
             setError(err.message || "Failed to delete column.");
@@ -536,7 +507,12 @@ const Jobs = () => {
                     <Title order={2}>Job Tracker</Title>
                     <Text c="dimmed">Track applications, interviews, and offers.</Text>
                 </div>
-                <Badge size="lg" radius="xl">{filteredJobs.length} jobs</Badge>
+                <Group>
+                    <Badge size="lg" radius="xl">{filteredJobs.length} jobs</Badge>
+                    <Button variant="light" onClick={() => setIsColumnsModalOpen(true)}>
+                        Edit columns
+                    </Button>
+                </Group>
             </Group>
 
             <Group mb="lg" wrap="wrap">
@@ -544,6 +520,7 @@ const Jobs = () => {
                     data={[{ value: "all", label: "All status" }, ...statusOptions]}
                     value={statusFilter}
                     onChange={(value) => setStatusFilter(value || "all")}
+                    withinPortal
                 />
                 <Select
                     data={[
@@ -556,6 +533,7 @@ const Jobs = () => {
                     ]}
                     value={typeFilter}
                     onChange={(value) => setTypeFilter(value || "all")}
+                    withinPortal
                 />
                 <Select
                     data={[
@@ -566,6 +544,7 @@ const Jobs = () => {
                     ]}
                     value={priorityFilter}
                     onChange={(value) => setPriorityFilter(value || "all")}
+                    withinPortal
                 />
                 <TextInput
                     placeholder="Search jobs"
@@ -581,220 +560,166 @@ const Jobs = () => {
                 Tip: click any job card to open the full editor.
             </Text>
 
-            <div className="task-grid">
-                <div className="task-board">
-                    <Paper className="glass-panel" radius="lg" p="lg" shadow="sm">
-                        <Title order={4}>Job labels</Title>
-                        <Stack mt="sm">
-                            <Group wrap="wrap">
-                                <TextInput
-                                    placeholder="New label"
-                                    value={newLabelName}
-                                    onChange={(event) => setNewLabelName(event.currentTarget.value)}
-                                />
-                                <ColorInput
-                                    value={newLabelColor}
-                                    onChange={setNewLabelColor}
-                                />
-                                <Button variant="light" onClick={addLabel}>
-                                    Add label
-                                </Button>
-                            </Group>
-                        </Stack>
-                    </Paper>
-
-                    <Paper className="glass-panel" radius="lg" p="lg" shadow="sm" mt="md">
-                        <Title order={4}>Job columns</Title>
-                        <Stack mt="sm">
-                            <Group wrap="wrap">
-                                <TextInput
-                                    placeholder="New column"
-                                    value={newColumnName}
-                                    onChange={(event) => setNewColumnName(event.currentTarget.value)}
-                                />
-                                <ColorInput
-                                    value={newColumnColor}
-                                    onChange={setNewColumnColor}
-                                />
-                                <Button variant="light" onClick={addColumn}>
-                                    Add column
-                                </Button>
-                            </Group>
-                            <Stack gap="xs">
-                                {jobColumns.map((column) => (
-                                    <Group key={column.key} wrap="wrap">
-                                        <TextInput
-                                            value={column.name}
-                                            onChange={(event) =>
-                                                updateColumn(column.key, { name: event.currentTarget.value })
-                                            }
-                                        />
-                                        <ColorInput
-                                            value={column.color || "#e9dfcf"}
-                                            onChange={(value) => updateColumn(column.key, { color: value })}
-                                        />
-                                        <Button color="red" variant="light" onClick={() => deleteColumn(column.key)}>
-                                            Delete
-                                        </Button>
-                                    </Group>
-                                ))}
-                            </Stack>
-                        </Stack>
-                    </Paper>
-                </div>
+            <DragDropContext onDragEnd={onDragEnd}>
+            <div className="task-grid task-grid--wide">
                 <div className="task-board">
                     {error && <Text c="red">{error}</Text>}
                     {loading ? (
                         <Text c="dimmed">Loading...</Text>
                     ) : (
-                        <DragDropContext onDragEnd={onDragEnd}>
-                            <div className="kanban-scroll">
-                                <div className="kanban">
+                        <div className="kanban-scroll">
+                            <div className="kanban">
                                 {jobColumns.map((column) => (
-                                    <Droppable key={column.key} droppableId={column.key}>
-                                        {(provided) => (
-                                            <div className="kanban-column" ref={provided.innerRef} {...provided.droppableProps}>
-                                                <Group justify="space-between" mb="sm">
-                                                    <Group gap="xs">
-                                                        {editingColumnKey === column.key ? (
-                                                            <TextInput
-                                                                value={column.name}
-                                                                onChange={(event) =>
-                                                                    updateColumn(column.key, { name: event.currentTarget.value })
-                                                                }
-                                                                onBlur={() => setEditingColumnKey(null)}
-                                                            />
-                                                        ) : (
-                                                            <Text
-                                                                fw={600}
-                                                                onClick={() => setEditingColumnKey(column.key)}
-                                                                style={{ color: column.color || "#c7d6cd" }}
-                                                            >
-                                                                {column.name}
-                                                            </Text>
-                                                        )}
-                                                        <Button
-                                                            size="xs"
-                                                            variant="light"
-                                                            onClick={() => setQuickAddStatus(column.key)}
-                                                        >
-                                                            +
-                                                        </Button>
-                                                    </Group>
-                                                    <Badge variant="light">{groupedJobs[column.key]?.length || 0}</Badge>
-                                                </Group>
-                                                {quickAddStatus === column.key && (
-                                                    <Group mb="sm" wrap="wrap">
-                                                        <TextInput
-                                                            placeholder="Quick job title"
-                                                            value={quickAddTitle}
-                                                            onChange={(event) => setQuickAddTitle(event.currentTarget.value)}
-                                                            required
-                                                        />
-                                                        <Button
-                                                            size="xs"
-                                                            onClick={() => handleQuickAdd(column.key)}
-                                                            loading={quickAddLoading}
-                                                        >
-                                                            Add
-                                                        </Button>
-                                                    </Group>
+                                    <div className="kanban-column" key={column.key}>
+                                        <Group justify="space-between" mb="sm">
+                                            <Group gap="xs">
+                                                {editingColumnKey === column.key ? (
+                                                    <TextInput
+                                                        value={column.name}
+                                                        onChange={(event) =>
+                                                            updateColumn(column.key, { name: event.currentTarget.value })
+                                                        }
+                                                        onBlur={() => setEditingColumnKey(null)}
+                                                    />
+                                                ) : (
+                                                    <Text
+                                                        fw={600}
+                                                        onClick={() => setEditingColumnKey(column.key)}
+                                                        style={{ color: column.color || "#c7d6cd" }}
+                                                    >
+                                                        {column.name}
+                                                    </Text>
                                                 )}
-                                                <Stack className="kanban-list" gap="sm">
-                                                    {(groupedJobs[column.key] || []).map((job, index) => (
-                                                        <Draggable key={job._id} draggableId={job._id} index={index}>
-                                                            {(dragProvided, snapshot) => {
-                                                                const card = (
-                                                                    <Paper
-                                                                        ref={dragProvided.innerRef}
-                                                                        {...dragProvided.draggableProps}
-                                                                        {...dragProvided.dragHandleProps}
-                                                                        shadow="sm"
-                                                                        radius="md"
-                                                                        p="md"
-                                                                        onClick={() => openJobModal(job)}
-                                                                        style={{
-                                                                            ...dragProvided.draggableProps.style,
-                                                                            zIndex: snapshot.isDragging ? 9999 : "auto",
-                                                                            cursor: "pointer"
-                                                                        }}
-                                                                    >
-                                                                        <Stack gap={6}>
-                                                                            <Group justify="space-between" align="flex-start">
-                                                                                <div>
-                                                                                    <Text fw={600}>{job.title}</Text>
-                                                                                    <Text size="sm" c="dimmed">{job.company}</Text>
-                                                                                </div>
-                                                                                {columnMeta[job.status] && (
-                                                                                    <Badge
-                                                                                        variant="light"
-                                                                                        style={{
-                                                                                            color: columnMeta[job.status].color,
-                                                                                            border: `1px solid ${columnMeta[job.status].color}`
-                                                                                        }}
-                                                                                    >
-                                                                                        {columnMeta[job.status].name}
-                                                                                    </Badge>
-                                                                                )}
-                                                                            </Group>
-                                                                            {Array.isArray(job.labels) && job.labels.length > 0 && (
-                                                                                <Group gap={6} wrap="wrap">
-                                                                                    {job.labels.map((label) => (
+                                                <Button
+                                                    size="xs"
+                                                    variant="light"
+                                                    onClick={() => setQuickAddStatus(column.key)}
+                                                >
+                                                    +
+                                                </Button>
+                                            </Group>
+                                            <Badge variant="light">{groupedJobs[column.key]?.length || 0}</Badge>
+                                        </Group>
+                                        {quickAddStatus === column.key && (
+                                            <Group mb="sm" wrap="wrap">
+                                                <TextInput
+                                                    placeholder="Quick job title"
+                                                    value={quickAddTitle}
+                                                    onChange={(event) => setQuickAddTitle(event.currentTarget.value)}
+                                                    required
+                                                />
+                                                <Button
+                                                    size="xs"
+                                                    onClick={() => handleQuickAdd(column.key)}
+                                                    loading={quickAddLoading}
+                                                >
+                                                    Add
+                                                </Button>
+                                            </Group>
+                                        )}
+                                        <Droppable droppableId={column.key}>
+                                            {(jobProvided) => (
+                                                <div
+                                                    className="kanban-dropzone"
+                                                    ref={jobProvided.innerRef}
+                                                    {...jobProvided.droppableProps}
+                                                >
+                                                    <Stack className="kanban-list" gap="sm">
+                                                        {(groupedJobs[column.key] || []).map((job, index) => (
+                                                            <Draggable key={job._id} draggableId={job._id} index={index}>
+                                                                {(dragProvided, snapshot) => {
+                                                                    const card = (
+                                                                        <Paper
+                                                                            className={snapshot.isDragging ? "kanban-card is-dragging" : "kanban-card"}
+                                                                            ref={dragProvided.innerRef}
+                                                                            {...dragProvided.draggableProps}
+                                                                            {...dragProvided.dragHandleProps}
+                                                                            shadow="sm"
+                                                                            radius="md"
+                                                                            p="md"
+                                                                            onClick={() => openJobModal(job)}
+                                                                            style={{
+                                                                                ...dragProvided.draggableProps.style,
+                                                                                zIndex: snapshot.isDragging ? 9999 : "auto",
+                                                                                cursor: "pointer"
+                                                                            }}
+                                                                        >
+                                                                            <Stack gap={6}>
+                                                                                <Group justify="space-between" align="flex-start">
+                                                                                    <div>
+                                                                                        <Text fw={600}>{job.title}</Text>
+                                                                                        <Text size="sm" c="dimmed">{job.company}</Text>
+                                                                                    </div>
+                                                                                    {columnMeta[job.status] && (
                                                                                         <Badge
-                                                                                            key={label}
                                                                                             variant="light"
                                                                                             style={{
-                                                                                                color: labelColors[label] || "#c7d6cd",
-                                                                                                border: `1px solid ${labelColors[label] || "#c7d6cd"}`
+                                                                                                color: columnMeta[job.status].color,
+                                                                                                border: `1px solid ${columnMeta[job.status].color}`
                                                                                             }}
                                                                                         >
-                                                                                            {label}
+                                                                                            {columnMeta[job.status].name}
                                                                                         </Badge>
-                                                                                    ))}
+                                                                                    )}
                                                                                 </Group>
-                                                                            )}
-                                                                            <Text size="sm" c="dimmed">
-                                                                                Priority: {job.priority} - Applied: {formatDate(job.appliedDate)}
-                                                                            </Text>
-                                                                            <Text size="sm" c="dimmed">
-                                                                                Interview: {formatDate(job.nextInterviewDate)} - Follow up: {formatDate(job.followUpDate)}
-                                                                            </Text>
-                                                                            {job.expectedSalary && (
+                                                                                {Array.isArray(job.labels) && job.labels.length > 0 && (
+                                                                                    <Group gap={6} wrap="wrap">
+                                                                                        {job.labels.map((label) => (
+                                                                                            <Badge
+                                                                                                key={label}
+                                                                                                variant="light"
+                                                                                                style={{
+                                                                                                    color: labelColors[label] || "#c7d6cd",
+                                                                                                    border: `1px solid ${labelColors[label] || "#c7d6cd"}`
+                                                                                                }}
+                                                                                            >
+                                                                                                {label}
+                                                                                            </Badge>
+                                                                                        ))}
+                                                                                    </Group>
+                                                                                )}
                                                                                 <Text size="sm" c="dimmed">
-                                                                                    Expected: {job.expectedSalary} {job.salaryCurrency}
+                                                                                    Priority: {job.priority} - Applied: {formatDate(job.appliedDate)}
                                                                                 </Text>
-                                                                            )}
-                                                                            <Group>
-                                                                                <Button
-                                                                                    size="xs"
-                                                                                    color="red"
-                                                                                    onClick={(event) => {
-                                                                                        event.stopPropagation();
-                                                                                        handleDelete(job._id);
-                                                                                    }}
-                                                                                >
-                                                                                    Delete
-                                                                                </Button>
-                                                                            </Group>
-                                                                        </Stack>
-                                                                    </Paper>
-                                                                );
-                                                                if (snapshot.isDragging) {
-                                                                    return createPortal(card, document.body);
-                                                                }
-                                                                return card;
-                                                            }}
-                                                        </Draggable>
-                                                    ))}
-                                                    {provided.placeholder}
-                                                </Stack>
-                                            </div>
-                                        )}
-                                    </Droppable>
+                                                                                <Text size="sm" c="dimmed">
+                                                                                    Interview: {formatDate(job.nextInterviewDate)} - Follow up: {formatDate(job.followUpDate)}
+                                                                                </Text>
+                                                                                {job.expectedSalary && (
+                                                                                    <Text size="sm" c="dimmed">
+                                                                                        Expected: {job.expectedSalary} {job.salaryCurrency}
+                                                                                    </Text>
+                                                                                )}
+                                                                                <Group>
+                                                                                    <Button
+                                                                                        size="xs"
+                                                                                        color="red"
+                                                                                        onClick={(event) => {
+                                                                                            event.stopPropagation();
+                                                                                            handleDelete(job._id);
+                                                                                        }}
+                                                                                    >
+                                                                                        Delete
+                                                                                    </Button>
+                                                                                </Group>
+                                                                            </Stack>
+                                                                        </Paper>
+                                                                    );
+                                                                    if (snapshot.isDragging) {
+                                                                        return createPortal(card, document.body);
+                                                                    }
+                                                                    return card;
+                                                                }}
+                                                            </Draggable>
+                                                        ))}
+                                                        {jobProvided.placeholder}
+                                                    </Stack>
+                                                </div>
+                                            )}
+                                        </Droppable>
+                                    </div>
                                 ))}
-                                </div>
                             </div>
-                        </DragDropContext>
+                        </div>
                     )}
                 </div>
 
@@ -806,7 +731,7 @@ const Jobs = () => {
                                 <TextInput placeholder="Company" value={company} onChange={(e) => setCompany(e.currentTarget.value)} />
                                 <TextInput placeholder="Role / Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
                                 <Group wrap="wrap">
-                                    <Select data={statusOptions} value={status} onChange={(value) => setStatus(value || "")} />
+                                <Select data={statusOptions} value={status} onChange={(value) => setStatus(value || "")} withinPortal />
                                     <Select
                                         data={[
                                             { value: "full-time", label: "Full-time" },
@@ -817,6 +742,7 @@ const Jobs = () => {
                                         ]}
                                         value={jobType}
                                         onChange={(value) => setJobType(value || "full-time")}
+                                        withinPortal
                                     />
                                     <Select
                                         data={[
@@ -826,6 +752,7 @@ const Jobs = () => {
                                         ]}
                                         value={priority}
                                         onChange={(value) => setPriority(value || "medium")}
+                                        withinPortal
                                     />
                                 </Group>
                                 <MultiSelect
@@ -833,6 +760,7 @@ const Jobs = () => {
                                     value={labels}
                                     onChange={setLabels}
                                     placeholder="Labels"
+                                    withinPortal
                                 />
                                 <TextInput placeholder="Location" value={location} onChange={(e) => setLocation(e.currentTarget.value)} />
                                 <TextInput placeholder="Job link" value={link} onChange={(e) => setLink(e.currentTarget.value)} />
@@ -875,13 +803,89 @@ const Jobs = () => {
                     </Paper>
                 </div>
             </div>
+            </DragDropContext>
         </div>
+        {isColumnsModalOpen && (
+            <div className="modal-overlay" onClick={() => setIsColumnsModalOpen(false)}>
+                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                    <div className="modal-scroll">
+                        <Title order={4}>Edit job columns</Title>
+                        <Stack mt="sm">
+                        <Title order={5}>Job labels</Title>
+                        <Group wrap="wrap" className="portal-popover">
+                            <TextInput
+                                placeholder="New label"
+                                value={newLabelName}
+                                onChange={(event) => setNewLabelName(event.currentTarget.value)}
+                            />
+                            <ColorInput
+                                value={newLabelColor}
+                                onChange={setNewLabelColor}
+                                withinPortal
+                            />
+                            <Button variant="light" onClick={addLabel}>
+                                Add label
+                            </Button>
+                        </Group>
+                        <Title order={5}>Job columns</Title>
+                        <Group wrap="wrap" className="portal-popover">
+                            <TextInput
+                                placeholder="New column"
+                                value={newColumnName}
+                                onChange={(event) => setNewColumnName(event.currentTarget.value)}
+                            />
+                            <ColorInput
+                                value={newColumnColor}
+                                onChange={setNewColumnColor}
+                                withinPortal
+                            />
+                            <Button variant="light" onClick={addColumn}>
+                                Add column
+                            </Button>
+                        </Group>
+                        <Stack gap="xs">
+                            {jobColumns.map((column, index) => (
+                                <Group key={column.key} className="column-edit-row" wrap="nowrap">
+                                    <TextInput
+                                        value={column.name}
+                                        onChange={(event) =>
+                                            updateColumn(column.key, { name: event.currentTarget.value })
+                                        }
+                                    />
+                                    <ColorInput
+                                        value={column.color || "#e9dfcf"}
+                                        onChange={(value) => updateColumn(column.key, { color: value })}
+                                        withinPortal
+                                    />
+                                    <Button variant="light" onClick={() => moveColumn(index, -1)}>
+                                        Up
+                                    </Button>
+                                    <Button variant="light" onClick={() => moveColumn(index, 1)}>
+                                        Down
+                                    </Button>
+                                    <Button color="red" variant="light" onClick={() => deleteColumn(column.key)}>
+                                        Delete
+                                    </Button>
+                                </Group>
+                            ))}
+                        </Stack>
+                        <Group justify="flex-end">
+                            <Button variant="light" onClick={() => setIsColumnsModalOpen(false)}>
+                                Close
+                            </Button>
+                        </Group>
+                        </Stack>
+                    </div>
+                </div>
+            </div>
+        )}
         {isModalOpen && (
             <div className="modal-overlay" onClick={cancelEdit}>
                 <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                    <Title order={4}>Edit job</Title>
-                    <form onSubmit={handleUpdate}>
-                        <Stack mt="sm">
+                    <div className="modal-scroll">
+                        <Title order={4}>Edit job</Title>
+                        <form onSubmit={handleUpdate}>
+                            <Stack mt="sm">
                             <TextInput
                                 value={editData.company || ""}
                                 onChange={(event) =>
@@ -924,6 +928,7 @@ const Jobs = () => {
                                             status: value || ""
                                         }))
                                     }
+                                    withinPortal
                                 />
                                 <Select
                                     data={[
@@ -940,6 +945,7 @@ const Jobs = () => {
                                             jobType: value || "full-time"
                                         }))
                                     }
+                                    withinPortal
                                 />
                                 <Select
                                     data={[
@@ -954,6 +960,7 @@ const Jobs = () => {
                                             priority: value || "medium"
                                         }))
                                     }
+                                    withinPortal
                                 />
                                 <MultiSelect
                                     data={labelOptions}
@@ -965,6 +972,42 @@ const Jobs = () => {
                                         }))
                                     }
                                     placeholder="Labels"
+                                    withinPortal
+                                />
+                            </Group>
+                            <Group wrap="wrap">
+                                <TextInput
+                                    type="date"
+                                    label="Applied"
+                                    value={editData.appliedDate || ""}
+                                    onChange={(event) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            appliedDate: event.currentTarget.value
+                                        }))
+                                    }
+                                />
+                                <TextInput
+                                    type="date"
+                                    label="Interview"
+                                    value={editData.nextInterviewDate || ""}
+                                    onChange={(event) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            nextInterviewDate: event.currentTarget.value
+                                        }))
+                                    }
+                                />
+                                <TextInput
+                                    type="date"
+                                    label="Follow up"
+                                    value={editData.followUpDate || ""}
+                                    onChange={(event) =>
+                                        setEditData((prev) => ({
+                                            ...prev,
+                                            followUpDate: event.currentTarget.value
+                                        }))
+                                    }
                                 />
                             </Group>
                             <Group>
@@ -973,8 +1016,9 @@ const Jobs = () => {
                                     Cancel
                                 </Button>
                             </Group>
-                        </Stack>
-                    </form>
+                            </Stack>
+                        </form>
+                    </div>
                 </div>
             </div>
         )}
